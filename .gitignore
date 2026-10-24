@@ -18,3 +18,6 @@ backend/data/generated/
 Thumbs.db
 .vscode/
 .idea/
+
+# Rules saved from the marketer page (live state, not code)
+backend/data/rules.json
