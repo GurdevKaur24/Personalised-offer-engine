@@ -1,0 +1,21 @@
+# Render Blueprint: runs the Telegram bot and the marketer page as one free web service.
+# Secrets (sync: false) are typed into Render's dashboard, never committed. Guide: docs/deploy.md
+services:
+  - type: web
+    name: peshkash
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python -m bot.main
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PESHKASH_PAGE_PASSWORD
+        sync: false
+      - key: PESHKASH_MODEL
+        value: claude-opus-5-5

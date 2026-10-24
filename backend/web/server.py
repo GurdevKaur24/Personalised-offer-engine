@@ -6,10 +6,16 @@ GET  /api/rules        the rules the bot uses now
 PUT  /api/rules        save new rules (refused with plain-English problems if any value is out of range)
 GET  /api/live         live results: classmates, offers, claims, stops, budget, and the latest offers
 GET  /api/decisions    the decision log: every time the engine decided, including when nothing was sent
+GET  /health           "ok" for uptime monitors (no password; says nothing about the data)
 
-Only listens on this computer (127.0.0.1). Classmates are shown only as the synthetic shopper they play.
+On this computer it listens on 127.0.0.1 with no password. When hosted (public), every page and API call needs the
+password from PESHKASH_PAGE_PASSWORD (browser sign-in box); without one set, the page stays locked.
+Classmates are shown only as the synthetic shopper they play.
 """
+import base64
+import binascii
 import json
+import secrets
 import sqlite3
 import threading
 from collections import Counter
@@ -25,8 +31,11 @@ COMMITTED = ("queued", "sent", "claimed", "later")
 
 
 class Api:
-    def __init__(self, data_dir: Path, page: Path, customers: list[dict], status: dict | None = None):
+    def __init__(self, data_dir: Path, page: Path, customers: list[dict], status: dict | None = None,
+                 password: str | None = None, public: bool = False):
         self.data_dir, self.page = Path(data_dir), Path(page)
+        self.password = password or None
+        self.locked = public and not self.password           # public with no password: show nothing
         self.rules_path = self.data_dir / "rules.json"
         self.db_path = self.data_dir / "live.db"
         self.shoppers = {c["id"]: {"name": c["name"], "seg": c["seg"], "seg_label": SEGMENTS[c["seg"]]["label"],
@@ -134,8 +143,35 @@ def make_handler(api: Api):
             self.end_headers()
             self.wfile.write(body)
 
+        def _allowed(self) -> bool:
+            """Answers the request itself (and returns False) when the caller may not see the page."""
+            if api.locked:
+                self._json(503, {"problems": ["The marketer page is locked: set PESHKASH_PAGE_PASSWORD on the server."]})
+                return False
+            if not api.password:
+                return True
+            auth = self.headers.get("Authorization", "")
+            try:
+                _, _, given = base64.b64decode(auth.removeprefix("Basic "), validate=True).decode().partition(":")
+            except (binascii.Error, UnicodeDecodeError):
+                given = ""
+            if auth.startswith("Basic ") and secrets.compare_digest(given.encode(), api.password.encode()):
+                return True
+            body = b"Sign in with the marketer page password."
+            self.send_response(401)
+            self.send_header("WWW-Authenticate", 'Basic realm="Peshkash marketer page", charset="UTF-8"')
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return False
+
         def do_GET(self):
             url = urlparse(self.path)
+            if url.path == "/health":
+                return self._json(200, {"ok": True})
+            if not self._allowed():
+                return
             q = parse_qs(url.query)
             limit = int(q["limit"][0]) if q.get("limit", [""])[0].isdigit() else None
             if url.path in ("/", "/index.html"):
@@ -156,7 +192,17 @@ def make_handler(api: Api):
             else:
                 self._json(404, {"problems": ["Not found."]})
 
+        def do_HEAD(self):                                   # some uptime monitors use HEAD
+            if urlparse(self.path).path == "/health":
+                self.send_response(200)
+                self.end_headers()
+            else:
+                self.send_response(404)
+                self.end_headers()
+
         def do_PUT(self):
+            if not self._allowed():
+                return
             if urlparse(self.path).path != "/api/rules":
                 return self._json(404, {"problems": ["Not found."]})
             size = int(self.headers.get("Content-Length") or 0)

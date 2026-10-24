@@ -104,3 +104,39 @@ def test_the_real_server_serves_the_page_and_the_api(world):
         assert e.value.code == 400 and "Biggest % discount" in json.loads(e.value.read())["problems"][0]
     finally:
         server.shutdown()
+
+
+def _get(url, password=None):
+    req = urllib.request.Request(url)
+    if password is not None:
+        import base64
+        req.add_header("Authorization", "Basic " + base64.b64encode(f"marketing:{password}".encode()).decode())
+    try:
+        with urllib.request.urlopen(req) as r:
+            return r.status, r.read()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read()
+
+
+@pytest.mark.parametrize("password, public, expect", [
+    (None, False, {"none": 200}),                                   # on this computer: no password
+    ("s3cret!", True, {"none": 401, "wrong": 401, "right": 200}),   # hosted with a password
+    (None, True, {"none": 503, "right": 503}),                      # hosted without one: locked
+])
+def test_hosted_page_needs_the_password_but_health_never_does(tmp_path, customers, password, public, expect):
+    web = Api(tmp_path, PAGE, customers[:10], password=password, public=public)
+    server = serve(web, port=0)
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        tries = {"none": None, "wrong": "nope", "right": password or "x"}
+        for who, code in expect.items():
+            for path in ("/", "/api/live", "/api/rules"):
+                assert _get(base + path, tries[who])[0] == code, (who, path)
+        assert _get(base + "/health") == (200, b'{"ok": true}')
+        if password:
+            put = urllib.request.Request(base + "/api/rules", data=b"{}", method="PUT")
+            with pytest.raises(urllib.error.HTTPError) as e:
+                urllib.request.urlopen(put)
+            assert e.value.code == 401 and not (tmp_path / "rules.json").exists()
+    finally:
+        server.shutdown()

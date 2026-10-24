@@ -40,6 +40,9 @@ Demo store: **BazaarKart**, a fictional Indian general marketplace. All customer
   8010, started by `bot.main`). Serves `prototype/index.html` and `/api/status`, `/api/rules` (GET/PUT; PUT validates
   with `Rules.from_dict` and writes `data/rules.json`, which the bot re-reads every decision), `/api/live`,
   `/api/decisions`. `Api` methods return `(status, dict)` so tests call them directly. Never sends chat ids.
+- **Hosting** (`render.yaml`, guide `docs/deploy.md`): when `PORT` is set the page listens on 0.0.0.0 and every route
+  except `/health` needs HTTP Basic auth with `PESHKASH_PAGE_PASSWORD` (locked with 503 if unset).
+  `PESHKASH_DATA_DIR` moves `data/`. Only one copy of the bot may poll Telegram (409 Conflict otherwise).
 - **prototype/index.html live mode**: when `/api/status` answers, the page adds "Live bot" and "Decision log", and the
   Rules screen loads/saves the bot's rules (camelCase in the page ↔ snake_case on the server: `toServer`/`fromServer`).
   The other screens stay a simulation on 1,500 in-browser shoppers and are labelled so.

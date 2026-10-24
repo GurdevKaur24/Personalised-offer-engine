@@ -59,5 +59,9 @@ While the bot runs, open **http://localhost:8010** on the same computer:
 - **Rules**: the bot's real rules. Changes save automatically and apply from the bot's next decision.
 - The simulation screens (overview, customers, run offers, results) work on 1,500 made-up shoppers in the browser.
 
+## Running it all the time
+`render.yaml` deploys the bot and the marketer page to Render's free plan; see [docs/deploy.md](docs/deploy.md)
+(GitHub, Render, the page password and a keep-alive monitor, step by step).
+
 ## Secrets
 Copy `.env.example` to `.env` and fill in your own values. `.env` is git-ignored; never commit tokens or keys.

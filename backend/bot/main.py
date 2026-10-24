@@ -22,6 +22,7 @@ from web.server import Api, serve
 
 BACKEND = Path(__file__).resolve().parent.parent
 DATA = BACKEND / "data"
+# Hosting (e.g. Render) sets PORT; then the page listens publicly and needs PESHKASH_PAGE_PASSWORD.
 
 
 def load_env(path: Path) -> None:
@@ -44,6 +45,9 @@ def main() -> None:
     args = ap.parse_args()
 
     load_env(BACKEND.parent / ".env")
+    data = Path(os.environ.get("PESHKASH_DATA_DIR") or DATA)
+    hosted = bool(os.environ.get("PORT"))
+    port = int(os.environ.get("PORT") or args.port)
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     if not token:
         print("No bot token found.\n"
@@ -52,7 +56,7 @@ def main() -> None:
               "3. Run this again. Never commit .env or share the token.")
         sys.exit(1)
 
-    db = DATA / "generated" / "peshkash.db"
+    db = data / "generated" / "peshkash.db"
     if not db.exists():
         print("Generating synthetic customers (first run)...")
         raw = generate()
@@ -73,17 +77,23 @@ def main() -> None:
         print(f"AI: {chooser.model} chooses offers within the rules (set PESHKASH_AI=0 in .env for rules only).")
     else:
         print("AI: off (no ANTHROPIC_API_KEY, or PESHKASH_AI=0). Offers are rule-based.")
-    bot = OfferBot(api, Store(DATA / "live.db"), customers, DATA / "rules.json", cart_delay=timedelta(minutes=args.cart_minutes),
+    bot = OfferBot(api, Store(data / "live.db"), customers, data / "rules.json", cart_delay=timedelta(minutes=args.cart_minutes),
                    chooser=chooser)
     print(f"Bot @{me['username']} is running with {len(customers):,} shoppers. Share this link: https://t.me/{me['username']}")
     if not args.no_web:
-        page = Api(DATA, BACKEND.parent / "prototype" / "index.html", customers,
-                   {"bot": me["username"], "ai_model": chooser.model if chooser else None})
+        password = os.environ.get("PESHKASH_PAGE_PASSWORD", "").strip()
+        page = Api(data, BACKEND.parent / "prototype" / "index.html", customers,
+                   {"bot": me["username"], "ai_model": chooser.model if chooser else None},
+                   password=password, public=hosted)
         try:
-            serve(page, port=args.port)
-            print(f"Marketer page: http://localhost:{args.port}  (rules, live results, decision log)")
+            serve(page, port=port, host="0.0.0.0" if hosted else "127.0.0.1")
+            if hosted:
+                print(f"Marketer page is public on port {port}" + ("; it asks for the page password." if password else
+                      ". It stays LOCKED until you set PESHKASH_PAGE_PASSWORD."))
+            else:
+                print(f"Marketer page: http://localhost:{port}  (rules, live results, decision log)")
         except OSError:
-            print(f"Port {args.port} is busy, so the marketer page is off. Try --port 8011.")
+            print(f"Port {port} is busy, so the marketer page is off. Try --port 8011.")
     print("Press Ctrl+C to stop.")
 
     offset = None
@@ -93,7 +103,15 @@ def main() -> None:
         except KeyboardInterrupt:
             print("Stopped.")
             return
-        except (TelegramError, OSError) as e:
+        except TelegramError as e:
+            if "Conflict" in str(e):                         # Telegram allows one copy of a bot at a time
+                print("Another copy of this bot is running (on your laptop or a host). Stop one; trying again in 30 seconds.")
+                time.sleep(30)
+            else:
+                print(f"Telegram error ({e}); trying again in 5 seconds.")
+                time.sleep(5)
+            continue
+        except OSError as e:
             print(f"Telegram not reachable ({e}); trying again in 5 seconds.")
             time.sleep(5)
             continue
