@@ -315,7 +315,7 @@ const DEFAULT_RULES = {
   maxPct: 20, maxFlat: 300, marginFloor: 10, budget: 150000,
   maxPerWeek: 2, minGapDays: 3, quietFrom: 21, quietTo: 9,
   skipRecentDays: 3, maxReturnPct: 40, holdoutPct: 10,
-  cartMaxPct: 5, welcomeFlat: 100, expiryDays: 7, requireExpiry: true, maxChars: 350,
+  cartMaxPct: 5, welcomeFlat: 100, expiryDays: 7, requireExpiry: true, maxChars: 350, cartOwnLimit: true,
   banned: ['guaranteed', 'free money', 'last chance ever', 'risk-free', '100% free'],
   grid: {
     champions: ['double_points', 'early_access', 'points_reminder', 'cart_reminder'],
@@ -333,7 +333,10 @@ function loadRules() {
   try { const saved = JSON.parse(localStorage.getItem(RULES_KEY) || 'null'); if (saved) return { ...base, ...saved, grid: { ...base.grid, ...(saved.grid || {}) } }; } catch (e) { /* storage blocked: use defaults */ }
   return base;
 }
-function saveRules(r) { try { localStorage.setItem(RULES_KEY, JSON.stringify(r)); } catch (e) { /* ignore */ } }
+function saveRules(r) {
+  if (typeof LIVE !== 'undefined' && LIVE.on) { queueRulesPush(); return; }       // live: the bot's rules on the server
+  try { localStorage.setItem(RULES_KEY, JSON.stringify(r)); } catch (e) { /* ignore */ }
+}
 
 const isQuiet = (h, R) => R.quietFrom > R.quietTo ? (h >= R.quietFrom || h < R.quietTo) : (h >= R.quietFrom && h < R.quietTo);
 const maxPctByMargin = (m, R) => Math.max(0, Math.floor((m - R.marginFloor / 100) * 100 + 1e-9));
@@ -500,6 +503,7 @@ const CHECKS = {
   words:    { label: 'Banned words',                  short: 'Message used a banned word' },
   length:   { label: 'Message length',                short: 'Message too long' },
   language: { label: "Customer's language",           short: "Message not in the customer's language" },
+  matches:  { label: 'Message matches the offer',     short: "Message promised something the offer doesn't give" },
 };
 function checkCustomer(c, R) {
   return [
@@ -925,7 +929,8 @@ const sendLabel = o => `${o.sendDay ? 'Tomorrow' : 'Today'}, ${hourLabel(o.sendH
 const riskLabel = r => r == null ? '–' : r >= .6 ? 'High' : r >= .3 ? 'Medium' : 'Low';
 const riskBar = r => r == null ? '<span class="text-slate-400">–</span>' : `<div class="flex items-center gap-2"><div class="h-1.5 w-14 rounded-full bg-slate-100"><div class="h-1.5 rounded-full ${r >= .6 ? 'bg-orange-500' : r >= .3 ? 'bg-amber-400' : 'bg-emerald-500'}" style="width:${Math.max(6, r * 100)}%"></div></div><span class="text-xs text-slate-600">${riskLabel(r)}</span></div>`;
 function pageHead(title, sub, right = '') {
-  return `<div class="text-xs text-slate-500 mb-2 flex flex-wrap gap-x-3 gap-y-1"><span>BazaarKart demo</span><span>·</span><span>${num(CUSTOMERS.length)} synthetic customers</span><span>·</span><span>Sat 24 Oct 2026</span><span>·</span><span>🪔 Diwali in ${DAYS_TO_DIWALI} days</span></div>
+  const liveScreen = LIVE.on && VIEWS[state.screen]?.live;
+  return `<div class="text-xs text-slate-500 mb-2 flex flex-wrap gap-x-3 gap-y-1"><span>${liveScreen ? 'Live Telegram bot' : LIVE.on ? 'Simulation' : 'BazaarKart demo'}</span><span>·</span><span>${num(liveScreen ? LIVE.info.customers : CUSTOMERS.length)} synthetic ${liveScreen ? 'shoppers' : 'customers'}</span><span>·</span><span>Sat 24 Oct 2026</span><span>·</span><span>🪔 Diwali in ${DAYS_TO_DIWALI} days</span></div>
   <div class="flex flex-wrap items-end justify-between gap-3 mb-5"><div><h1 class="text-2xl font-bold tracking-tight">${title}</h1><p class="text-slate-600 mt-1 max-w-3xl">${sub}</p></div><div class="flex flex-wrap items-center gap-2">${right}</div></div>`;
 }
 function pager(total, page, size, fn) {
@@ -1083,8 +1088,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(
 /* ---------- Rules ---------- */
 function ruleImpact(key) {
   const R = state.rules, C = CUSTOMERS, run = state.run;
-  const lastRun = id => { if (!run) return ''; const n = run.decisions.filter(d => d.firstChecks.some(x => x.id === id && !x.ok)).length; return ` Last run: ${n ? `${plural(n, 'AI pick')} broke this and ${n === 1 ? 'was' : 'were'} fixed before sending.` : 'no AI pick broke this.'}`; };
-  const count = f => num(C.filter(f).length);
+  const lastRun = id => { if (!run) return ''; const n = run.decisions.filter(d => d.firstChecks.some(x => x.id === id && !x.ok)).length; return ` ${LIVE.on ? 'Last simulated run' : 'Last run'}: ${n ? `${plural(n, 'AI pick')} broke this and ${n === 1 ? 'was' : 'were'} fixed before sending.` : 'no AI pick broke this.'}`; };
+  const count = f => (LIVE.on ? 'In the simulation, ' : '') + num(C.filter(f).length);
   switch (key) {
     case 'maxPct': return 'The AI can never offer more than this on % discounts.' + lastRun('discount');
     case 'maxFlat': return 'Biggest flat discount in rupees (flat ₹ off and welcome offers).';
@@ -1096,7 +1101,7 @@ function ruleImpact(key) {
     case 'minGapDays': return `${count(c => c.lastOfferAgo < R.minGapDays)} customers got an offer in the last ${plural(R.minGapDays, 'day')} and will be skipped.`;
     case 'skipRecentDays': return `${count(c => c.recency != null && c.recency < R.skipRecentDays)} customers bought in the last ${plural(R.skipRecentDays, 'day')}; they don't need a nudge.`;
     case 'maxReturnPct': return `${count(c => c.total >= 3 && c.returnRate * 100 > R.maxReturnPct)} customers return more than ${R.maxReturnPct}% of their orders and will be skipped.`;
-    case 'holdoutPct': return `About ${count(c => inHoldout(c, R))} customers get nothing on purpose, so you can see what the offers really add.`;
+    case 'holdoutPct': return `About ${count(c => inHoldout(c, R))} customers get nothing on purpose, so you can see what the offers really add.` + (LIVE.on ? ' Applies to campaigns; classmates testing the bot always get offers.' : '');
     case 'quiet': return `${count(c => isQuiet(c.activeHour, R))} customers are usually online during these hours; their messages are moved to the evening before.` + lastRun('quiet');
     case 'expiryDays': return 'Offers must end within this many days (and at least 2).' + lastRun('expiry');
     case 'maxChars': return 'Long messages get cut off on phones.' + lastRun('length');
@@ -1140,11 +1145,13 @@ function viewRules() {
   const grid = `<div class="overflow-x-auto scroll-thin"><table class="text-sm min-w-[760px] w-full"><thead><tr><th class="text-left py-2 pr-3 font-medium text-xs text-slate-500">Segment</th>${OFFER_KEYS.map(t => `<th class="py-2 px-1 font-medium text-xs text-slate-600 text-center w-20"><div class="text-base">${OFFERS[t].icon}</div>${OFFERS[t].short}</th>`).join('')}</tr></thead>
     <tbody>${SEG_KEYS.map(sg => `<tr class="border-t border-slate-100"><td class="py-2 pr-3">${segChip(sg)}</td>${OFFER_KEYS.map(t => `<td class="text-center"><input type="checkbox" aria-label="${OFFERS[t].label} for ${SEGMENTS[sg].label}" class="w-4 h-4 accent-violet-600" ${R.grid[sg].includes(t) ? 'checked' : ''} onchange="toggleGrid('${sg}','${t}',this.checked)"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   return `${pageHead('Offer rules', 'These limits apply to every offer. The AI only chooses inside them, and every AI choice is checked against them again before it is sent.', btn('Reset to defaults', 'resetRules()', 'ghost') + btn('Run with these rules', "runNow();go('run')"))}
+  ${LIVE.on ? `<div class="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm"><b>Live:</b> these are the rules the Telegram bot uses. Changes save automatically and apply from the bot's next decision. <span id="liveSave">${saveStatusHtml()}</span></div>` : ''}
   <div id="rulesBanner" class="${state.rulesChanged ? '' : 'hidden'} mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex flex-wrap items-center gap-3"><span>Rules changed. Run the campaign again to see the effect.</span>${btn('Run campaign', "runNow();go('run')", 'primary', 'ml-auto')}</div>
   <div class="grid lg:grid-cols-2 gap-4">
     ${card(`${h2('💰 Money limits')}${s('maxPct', 'Never give more than this % off', 0, 50, 5)}${s('maxFlat', 'Never give more than this flat ₹ off', 0, 1000, 50)}${s('marginFloor', 'Every offer must leave at least this much margin', 0, 30, 1)}${s('budget', 'Campaign budget', 25000, 500000, 5000)}`)}
     ${card(`${h2('🔔 Don\'t over-message')}${s('maxPerWeek', 'At most this many offers per customer per week', 1, 5, 1)}${s('minGapDays', 'Wait at least this long between two offers', 0, 14, 1)}
-      <div class="py-3"><div class="text-sm font-medium flex flex-wrap items-center gap-2">No messages between ${hourSel('quietFrom')} and ${hourSel('quietTo')}</div><p data-impact="quiet" class="text-xs text-slate-500 mt-1">${ruleImpact('quiet')}</p></div>`)}
+      <div class="py-3 border-b border-slate-100"><div class="text-sm font-medium flex flex-wrap items-center gap-2">No messages between ${hourSel('quietFrom')} and ${hourSel('quietTo')}</div><p data-impact="quiet" class="text-xs text-slate-500 mt-1">${ruleImpact('quiet')}</p></div>
+      <label class="py-3 text-sm flex items-start gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 mt-0.5 accent-violet-600" ${R.cartOwnLimit ? 'checked' : ''} onchange="state.rules.cartOwnLimit=this.checked;saveRules(state.rules);rulesTouched()"><span>Cart reminders have their own limit: one per cart, even if the customer got an offer recently<span class="block text-xs text-slate-500 mt-0.5">Off: cart reminders also wait for the weekly limit and the gap between offers.</span></span></label>`)}
     ${card(`${h2('🚫 Who to leave out')}
       <div class="py-3 border-b border-slate-100 text-sm flex items-center gap-2"><input type="checkbox" checked disabled class="w-4 h-4"> Customers who tapped "Stop offers" <span class="text-xs text-slate-500">(always on)</span></div>
       ${s('skipRecentDays', 'Skip customers who bought in the last', 0, 14, 1)}${s('maxReturnPct', 'Skip customers who return more than', 10, 100, 5)}`)}
@@ -1340,8 +1347,167 @@ function afterResults() {
   ], { yFmt: lakh, legend: true, tip: ctx => ` ${ctx.dataset.label}: ${inr(ctx.raw)}` });
 }
 
+/* ---------- Live mode: served by the bot (python -m bot.main) ---------- */
+const LIVE = { on: false, info: null, data: null, log: null, saveMsg: '', problems: [], logFilter: 'all' };
+const toServer = r => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.replace(/[A-Z]/g, m => '_' + m.toLowerCase()), v]));
+const fromServer = r => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.replace(/_([a-z])/g, (_, ch) => ch.toUpperCase()), v]));
+async function api(path, opts = {}) {
+  const res = await fetch(path, { cache: 'no-store', ...opts });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(path), { data });
+  return data;
+}
+let pushTimer = null;
+function queueRulesPush() {
+  clearTimeout(pushTimer);
+  LIVE.saveMsg = 'Saving…';
+  showSaveStatus();
+  pushTimer = setTimeout(pushRules, 600);
+}
+async function pushRules() {
+  try {
+    await api('/api/rules', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toServer(state.rules)) });
+    LIVE.problems = [];
+    LIVE.saveMsg = `Saved at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}.`;
+  } catch (e) {
+    LIVE.problems = e.data?.problems || ['Could not reach the bot. Is it still running?'];
+    LIVE.saveMsg = 'Not saved.';
+  }
+  showSaveStatus();
+}
+function saveStatusHtml() {
+  return `<b class="${LIVE.problems.length ? 'text-rose-700' : 'text-emerald-800'}">${esc(LIVE.saveMsg)}</b>${LIVE.problems.map(p => `<span class="block text-rose-700">${esc(p)}</span>`).join('')}`;
+}
+function showSaveStatus() { const el = document.getElementById('liveSave'); if (el) el.innerHTML = saveStatusHtml(); }
+async function refreshLive() {
+  try { [LIVE.data, LIVE.log] = await Promise.all([api('/api/live'), api('/api/decisions')]); LIVE.error = null; }
+  catch (e) { LIVE.error = 'Could not reach the bot. Is it still running?'; }
+}
+async function startLive() {
+  if (!location.protocol.startsWith('http')) return;                       // opened as a file: demo mode
+  try { LIVE.info = await api('/api/status'); } catch (e) { return; }       // some other server: demo mode
+  LIVE.on = true;
+  try { state.rules = { ...structuredClone(DEFAULT_RULES), ...fromServer((await api('/api/rules')).rules) }; } catch (e) { /* keep page rules */ }
+  runNow();
+  await refreshLive();
+  if (!VIEWS[location.hash.slice(1)]) state.screen = 'live';
+  render();
+  setInterval(async () => { await refreshLive(); if (['live', 'log'].includes(state.screen)) render(); }, 10000);
+}
+
+const LIVE_STATUS = {
+  queued:    ['Waiting for morning', 'bg-sky-100 text-sky-800'],
+  sent:      ['No answer yet', 'bg-slate-200 text-slate-700'],
+  claimed:   ['Claimed', 'bg-emerald-100 text-emerald-800'],
+  later:     ['Not now', 'bg-amber-100 text-amber-800'],
+  stopped:   ['Stopped offers', 'bg-rose-100 text-rose-800'],
+  cancelled: ['Cancelled', 'bg-slate-100 text-slate-500'],
+};
+const SOURCES = {
+  ai:       ['AI', 'bg-violet-100 text-violet-800', 'Claude chose it and it passed every rule first time.'],
+  ai_retry: ['AI, after a fix', 'bg-amber-100 text-amber-800', 'The rule checker refused Claude\'s first choice; Claude fixed it and it passed.'],
+  rules:    ['Rules', 'bg-slate-200 text-slate-700', 'The rule-based engine chose it (AI off, unreachable, or its choice broke the rules twice).'],
+};
+const TRIGGERS = { start: 'Started the bot', asked: 'Asked for an offer', cart: 'Left a cart' };
+const chipOf = ([label, cls]) => `<span class="inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${cls}">${esc(label)}</span>`;
+const fmtWhen = iso => iso ? new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '–';
+const shopperCell = s => `<div class="font-medium">${esc(s.name || 'Unknown shopper')}</div><div class="text-xs text-slate-500">${esc(s.city || '')}${s.lang ? ' · ' + LANGS[s.lang] : ''}</div>`;
+function describeChoice(ch) {
+  const t = ch.offer_type, o = OFFERS[t];
+  if (!o) return `“${esc(t)}” (not an offer type)`;
+  const vals = [ch.percent_off ? `${ch.percent_off}%` : '', ch.flat_off ? `₹${ch.flat_off}` : '', ch.min_order ? `above ₹${num(ch.min_order)}` : '',
+    t === 'pct_off' && CATS[ch.category] ? `on ${CATS[ch.category].name}` : ''].filter(Boolean).join(' ');
+  return `${o.icon} ${o.label}${vals ? ': ' + vals : ''}`;
+}
+function attemptsHtml(attempts) {
+  if (!attempts?.length) return '<p class="text-sm text-slate-500">The AI was not asked (AI off, or a customer rule said no first).</p>';
+  return attempts.map((a, i) => `<div class="rounded-xl border ${a.error || a.failed?.length ? 'border-rose-200 bg-rose-50/40' : 'border-emerald-200 bg-emerald-50/40'} p-3 text-sm mb-2">
+      <div class="font-semibold">${i === 0 ? "Claude's first choice" : "Claude's second try"}</div>
+      ${a.error ? `<p class="text-rose-700 mt-1">${esc(a.error)}</p>` : `
+        <div class="mt-1">${describeChoice(a.choice)}</div>
+        <div class="mt-1 whitespace-pre-line rounded-lg bg-white border border-slate-200 p-2 text-[13px]">${esc(a.choice.message_line1)}\n${esc(a.choice.message_line2)}</div>
+        <div class="text-xs text-slate-600 mt-1"><b>Claude's reason:</b> ${esc(a.choice.reason)}</div>
+        <div class="mt-2">${a.failed.length ? `<b class="text-rose-700">Refused by the rule checker:</b><ul class="list-disc ml-5 text-rose-800">${a.failed.map(f => `<li>${esc(f.detail)}</li>`).join('')}</ul>` : '<b class="text-emerald-700">✓ Passed every rule.</b>'}</div>`}
+    </div>`).join('');
+}
+function openLiveOffer(id) {
+  const o = LIVE.data.recent.find(x => x.id === id);
+  if (!o) return;
+  const s = o.shopper;
+  openDrawer(`<div class="flex items-start justify-between gap-3"><div><div class="text-xl font-bold">${esc(s.name || '')}</div>
+      <div class="mt-1 flex flex-wrap gap-1.5 items-center">${s.seg ? segChip(s.seg) : ''}${chipOf(SOURCES[o.source])}${chipOf(LIVE_STATUS[o.status])}<span class="text-sm text-slate-500">${esc(TRIGGERS[o.trigger] || '')} · ${fmtWhen(o.at)}</span></div></div>${btn('Close', 'closeDrawer()', 'ghost')}</div>
+    <h3 class="font-semibold mt-5 mb-2">Message sent</h3>
+    <div class="tg-bg rounded-2xl p-3"><div class="max-w-[90%] bg-white rounded-2xl rounded-bl-md px-3 py-2 shadow-sm text-[14px] whitespace-pre-line">${esc(o.text)}</div></div>
+    <p class="text-sm text-slate-600 mt-2"><b>Why:</b> ${esc(o.reason)}</p>
+    <p class="text-xs text-slate-500 mt-1">${esc(SOURCES[o.source][2])} Costs up to ${inr(o.cost)} if used.</p>
+    <h3 class="font-semibold mt-5 mb-2">What the AI proposed</h3>${attemptsHtml(o.ai_attempts)}
+    <h3 class="font-semibold mt-5 mb-2">Final rule check</h3>${checkList(o.checks.filter(x => CHECKS[x.id]))}`);
+}
+function viewLive() {
+  if (!LIVE.on) return `${pageHead('Live bot', 'Start the bot (python -m bot.main) and open the address it prints to see live results here.')}`;
+  const L = LIVE.data || { recent: [], by_source: {}, by_type: {} }, bot = LIVE.info.bot;
+  const link = bot ? `https://t.me/${bot}` : null;
+  const pctOf = (x) => x == null ? '–' : pct(x);
+  const total = Object.values(L.by_source).reduce((a, b) => a + b, 0);
+  const srcRows = ['ai', 'ai_retry', 'rules'].map(k => `<div class="py-2"><div class="flex items-center justify-between gap-2 text-sm">${chipOf(SOURCES[k])}<span class="tabular-nums font-semibold">${num(L.by_source[k] || 0)}</span></div>
+      <div class="h-2 mt-1.5 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${total ? (L.by_source[k] || 0) / total * 100 : 0}%"></div></div><p class="text-xs text-slate-500 mt-1">${SOURCES[k][2]}</p></div>`).join('');
+  const typeMax = Math.max(1, ...Object.values(L.by_type));
+  const typeRows = Object.entries(L.by_type).sort((a, b) => b[1] - a[1]).map(([t, n]) => `<div class="flex items-center gap-2 text-sm py-1"><span class="w-48 shrink-0 truncate">${OFFERS[t].icon} ${OFFERS[t].label}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${n / typeMax * 100}%"></div></div><span class="w-8 text-right tabular-nums">${n}</span></div>`).join('');
+  const rows = L.recent.map(o => `<tr class="border-t border-slate-100 hover:bg-violet-50/50 cursor-pointer" onclick="openLiveOffer(${o.id})">
+      <td class="py-2.5 pr-3 whitespace-nowrap text-slate-600">${fmtWhen(o.at)}</td><td class="py-2.5 pr-3">${shopperCell(o.shopper)}</td>
+      <td class="py-2.5 pr-3">${o.shopper.seg ? segChip(o.shopper.seg) : ''}</td>
+      <td class="py-2.5 pr-3"><span class="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">${OFFERS[o.type].icon} ${esc(o.summary)}</span></td>
+      <td class="py-2.5 pr-3">${chipOf(SOURCES[o.source])}</td><td class="py-2.5 pr-3">${chipOf(LIVE_STATUS[o.status])}</td>
+      <td class="py-2.5 text-right tabular-nums">${inr(o.cost)}</td></tr>`).join('');
+  return `${pageHead('Live bot', `What classmates get from ${bot ? '@' + esc(bot) : 'the bot'}, as it happens. Updates every 10 seconds.`,
+      (link ? `<a href="${link}" target="_blank" rel="noopener" class="rounded-xl px-3.5 py-2 text-sm font-medium bg-violet-600 hover:bg-violet-700 text-white">Open the bot</a>` : '') + btn('Refresh', 'refreshLive().then(render)', 'ghost'))}
+    ${LIVE.error ? `<div class="mb-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">${esc(LIVE.error)}</div>` : ''}
+    <div class="mb-4 flex flex-wrap gap-2 text-sm"><span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1">● Bot running</span><span class="rounded-full ${LIVE.info.ai_model ? 'bg-violet-100 text-violet-800' : 'bg-slate-200 text-slate-700'} px-3 py-1">${LIVE.info.ai_model ? `AI: ${esc(LIVE.info.ai_model)} chooses within the rules` : 'AI off: rule-based offers'}</span></div>
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      ${kpi('Classmates', num(L.classmates || 0), `${num(L.stopped_users || 0)} stopped offers`)}
+      ${kpi('Offers sent', num(L.delivered || 0), L.queued ? `${num(L.queued)} waiting for morning` : 'all delivered')}
+      ${kpi('Claimed', pctOf(L.claim_rate), `${num(L.claimed || 0)} of ${num(L.delivered || 0)} offers`)}
+      ${kpi('Stopped after an offer', pctOf(L.stop_rate), `${num(L.stopped || 0)} · ${num(L.later || 0)} said "not now"`)}
+      ${kpi('Budget used', inr(L.spent || 0), `of ${inr(L.budget || 0)}, counting every offer at full cost`)}
+    </div>
+    ${!L.recent.length ? card(`${h2('No offers yet')}<p class="text-sm text-slate-600 mt-2">Share the bot with classmates${link ? `: <a class="text-violet-700 font-medium" href="${link}" target="_blank" rel="noopener">${link}</a>` : ''}. A Telegram bot can only message people who have started it.</p>`, 'mt-4') : `
+    <div class="grid lg:grid-cols-2 gap-4 mt-4">
+      ${card(`${h2('Who chose each offer', 'Every AI choice is checked against the rules before it is sent.')}<div class="mt-2 divide-y divide-slate-100">${srcRows}</div>`)}
+      ${card(`${h2('Offers sent, by type')}<div class="mt-3">${typeRows}</div>`)}
+    </div>
+    ${card(`${h2('Latest offers', 'Click an offer to see what the AI proposed and what the rule checker said.')}
+      <div class="overflow-x-auto scroll-thin mt-3"><table class="w-full text-sm min-w-[860px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">When</th><th class="py-2 pr-3 font-medium">Shopper</th><th class="py-2 pr-3 font-medium">Segment</th><th class="py-2 pr-3 font-medium">Offer</th><th class="py-2 pr-3 font-medium">Chosen by</th><th class="py-2 pr-3 font-medium">What happened</th><th class="py-2 font-medium text-right">Cost if used</th></tr></thead><tbody>${rows}</tbody></table></div>`, 'mt-4')}`}`;
+}
+function viewLog() {
+  if (!LIVE.on) return `${pageHead('Decision log', 'Available when the page is opened from the running bot.')}`;
+  const all = LIVE.log?.decisions || [];
+  const F = { all: () => true, sent: d => d.outcome === 'offer', notsent: d => d.outcome !== 'offer', fixed: d => d.source === 'ai_retry', fallback: d => d.source === 'rules' && d.ai_attempts.length };
+  const labels = { all: 'All', sent: 'Offer made', notsent: 'Not sent', fixed: 'AI fixed after a refusal', fallback: 'AI refused twice → rules' };
+  const list = all.filter(F[LIVE.logFilter]);
+  const chip = k => `<button type="button" onclick="LIVE.logFilter='${k}';render()" class="rounded-full px-3 py-1 text-sm border ${LIVE.logFilter === k ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}">${labels[k]} <span class="opacity-70 tabular-nums">${all.filter(F[k]).length}</span></button>`;
+  const rows = list.map((d, i) => `<tr class="border-t border-slate-100 align-top ${d.ai_attempts.length ? 'hover:bg-violet-50/50 cursor-pointer' : ''}" ${d.ai_attempts.length ? `onclick="openLogEntry(${all.indexOf(d)})"` : ''}>
+      <td class="py-2.5 pr-3 whitespace-nowrap text-slate-600">${fmtWhen(d.at)}</td><td class="py-2.5 pr-3 whitespace-nowrap">${esc(TRIGGERS[d.trigger] || d.trigger)}</td>
+      <td class="py-2.5 pr-3">${shopperCell(d.shopper)}</td>
+      <td class="py-2.5 pr-3">${d.outcome === 'offer' ? chipOf(['Offer made', 'bg-emerald-100 text-emerald-800']) : chipOf(['Not sent', 'bg-rose-100 text-rose-800'])}</td>
+      <td class="py-2.5 pr-3">${d.outcome === 'offer' || d.ai_attempts.length ? chipOf(SOURCES[d.source]) : ''}</td>
+      <td class="py-2.5 text-xs text-slate-600 min-w-[18rem]">${d.offer ? `<b class="text-slate-800">${esc(d.offer)}</b> · ` : ''}${esc(d.outcome === 'offer' ? d.reason : (d.failed[0]?.detail || d.reason))}${d.ai_attempts.some(a => a.failed?.length) ? `<div class="text-amber-700 mt-0.5">Checker refused: ${esc(d.ai_attempts.flatMap(a => (a.failed || []).map(f => f.detail)).join(' · '))}</div>` : ''}</td></tr>`).join('');
+  return `${pageHead('Decision log', 'Every time the engine decided for a classmate, including when nothing was sent and why. Newest first.', btn('Refresh', 'refreshLive().then(render)', 'ghost'))}
+    ${card(`<div class="flex flex-wrap gap-2">${Object.keys(F).map(chip).join('')}</div>
+      <div class="overflow-x-auto scroll-thin mt-3"><table class="w-full text-sm min-w-[900px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">When</th><th class="py-2 pr-3 font-medium">Trigger</th><th class="py-2 pr-3 font-medium">Shopper</th><th class="py-2 pr-3 font-medium">Result</th><th class="py-2 pr-3 font-medium">Chosen by</th><th class="py-2 font-medium">Offer and reason</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" class="py-8 text-center text-slate-500">Nothing here yet.</td></tr>'}</tbody></table></div>`)}`;
+}
+function openLogEntry(i) {
+  const d = LIVE.log.decisions[i];
+  openDrawer(`<div class="flex items-start justify-between gap-3"><div><div class="text-xl font-bold">${esc(d.shopper.name || '')}</div>
+      <div class="text-sm text-slate-500 mt-1">${esc(TRIGGERS[d.trigger] || '')} · ${fmtWhen(d.at)}</div></div>${btn('Close', 'closeDrawer()', 'ghost')}</div>
+    <h3 class="font-semibold mt-5 mb-2">What the AI proposed</h3>${attemptsHtml(d.ai_attempts)}
+    <h3 class="font-semibold mt-5 mb-2">Result</h3><p class="text-sm">${d.outcome === 'offer' ? `Sent: <b>${esc(d.offer)}</b>` : 'Not sent'} (${esc(SOURCES[d.source][0])}). ${esc(d.reason)}</p>`);
+}
+
 /* ---------- Shell and navigation ---------- */
 const VIEWS = {
+  live:      { label: 'Live bot',         icon: '🟢', html: viewLive, live: true },
+  log:       { label: 'Decision log',     icon: '🧾', html: viewLog, live: true },
   overview:  { label: 'Overview',         icon: '📊', html: viewOverview, after: afterOverview },
   customers: { label: 'Customers',        icon: '👥', html: viewCustomers },
   rules:     { label: 'Rules',            icon: '🧭', html: viewRules },
@@ -1352,7 +1518,16 @@ const VIEWS = {
 function go(screen) { state.screen = screen; closeDrawer(); render(); window.scrollTo(0, 0); try { history.replaceState(null, '', '#' + screen); } catch (e) { /* file:// may block */ } }
 function render() {
   clearCharts();
-  document.getElementById('nav').innerHTML = Object.entries(VIEWS).map(([k, v]) => `<button type="button" onclick="go('${k}')" class="shrink-0 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap ${state.screen === k ? 'bg-violet-50 text-violet-700' : 'text-slate-600 hover:bg-slate-50'}" ${state.screen === k ? 'aria-current="page"' : ''}><span aria-hidden="true">${v.icon}</span>${v.label}</button>`).join('');
+  const navBtn = ([k, v]) => `<button type="button" onclick="go('${k}')" class="shrink-0 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap ${state.screen === k ? 'bg-violet-50 text-violet-700' : 'text-slate-600 hover:bg-slate-50'}" ${state.screen === k ? 'aria-current="page"' : ''}><span aria-hidden="true">${v.icon}</span>${v.label}</button>`;
+  const entries = Object.entries(VIEWS);
+  document.getElementById('nav').innerHTML = LIVE.on
+    ? entries.filter(([, v]) => v.live).map(navBtn).join('') + entries.filter(([k]) => k === 'rules').map(navBtn).join('')
+      + `<div class="hidden md:block px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Simulation · ${num(CUSTOMERS.length)} made-up shoppers</div>`
+      + entries.filter(([k, v]) => !v.live && k !== 'rules').map(navBtn).join('')
+    : entries.filter(([, v]) => !v.live).map(navBtn).join('');
+  document.getElementById('footNote').innerHTML = LIVE.on
+    ? `Live: connected to ${LIVE.info.bot ? '@' + esc(LIVE.info.bot) : 'the bot'}.<br>Rules here are the bot's rules. The simulation screens use made-up shoppers.`
+    : 'Prototype · synthetic data only.<br>AI choices are simulated here; the real engine uses Claude.';
   const v = VIEWS[state.screen];
   const fresh = state.lastScreen !== state.screen;
   document.getElementById('main').innerHTML = `<div class="${fresh ? 'fade-in' : ''}">${v.html()}</div>`;
@@ -1363,13 +1538,14 @@ document.getElementById('app').innerHTML = `<div class="min-h-screen md:flex">
   <aside class="bg-white border-b md:border-b-0 md:border-r border-slate-200 md:w-60 md:shrink-0 md:h-screen md:sticky md:top-0 flex flex-col">
     <div class="px-4 pt-3 pb-2 md:py-5 flex items-center gap-2.5"><div class="w-9 h-9 rounded-xl bg-violet-600 text-white grid place-items-center text-lg" aria-hidden="true">🎁</div><div><div class="font-bold leading-tight">Peshkash</div><div class="text-xs text-slate-500 leading-tight">Offer engine · BazaarKart</div></div></div>
     <nav id="nav" aria-label="Screens" class="flex md:flex-col gap-1 px-2 md:px-3 pb-2 overflow-x-auto scroll-thin"></nav>
-    <div class="hidden md:block mt-auto p-4 text-xs text-slate-500 border-t border-slate-200">Prototype · synthetic data only.<br>AI choices are simulated here; the real engine uses Claude.</div>
+    <div id="footNote" class="hidden md:block mt-auto p-4 text-xs text-slate-500 border-t border-slate-200"></div>
   </aside>
   <main id="main" class="flex-1 min-w-0 px-4 py-5 md:px-8 md:py-7"></main>
 </div><div id="drawer"></div>`;
 runNow();
-if (VIEWS[location.hash.slice(1)]) state.screen = location.hash.slice(1);
+if (VIEWS[location.hash.slice(1)] && !VIEWS[location.hash.slice(1)].live) state.screen = location.hash.slice(1);
 render();
+startLive().then(() => { if (LIVE.on && VIEWS[location.hash.slice(1)]) { state.screen = location.hash.slice(1); render(); } });
 </script>
 </body>
 </html>

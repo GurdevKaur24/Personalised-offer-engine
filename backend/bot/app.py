@@ -118,11 +118,15 @@ class OfferBot:
             d = ai_decide(c, r, self.chooser, self.store.spent(), **kw)
         else:
             d = decide(c, r, self.store.spent(), **kw)
-        self.store.log(chat_id, "decision", json.dumps({"trigger": trigger, "customer": c["id"], "outcome": d.outcome,
-                                                        "offer": describe(d.offer) if d.offer else None, "reason": d.reason,
-                                                        "failed": [x.id for x in failed(d.checks)], "source": d.source,
-                                                        "ai_attempts": d.attempts}, ensure_ascii=False), now)
+        def log(offer_id=None):
+            self.store.log(chat_id, "decision", json.dumps({
+                "trigger": trigger, "customer": c["id"], "outcome": d.outcome, "offer_id": offer_id,
+                "offer": describe(d.offer) if d.offer else None, "reason": d.reason, "source": d.source,
+                "failed": [{"id": x.id, "detail": x.detail} for x in failed(d.checks)], "ai_attempts": d.attempts,
+            }, ensure_ascii=False), now)
+
         if d.outcome != "offer":
+            log()
             if only:                                         # a silent trigger (cart): say nothing
                 return None
             ids = {x.id for x in failed(d.checks)}
@@ -141,6 +145,7 @@ class OfferBot:
         send_at = now if (o.send_day == 0 and o.send_hour == now.hour) else \
             datetime.combine(now.date() + timedelta(days=o.send_day), time(o.send_hour), IST)
         oid = self.store.add_offer(chat_id, c["id"], o, describe(o), "queued", trigger, now, send_at, d.checks, d.source)
+        log(oid)
         if send_at <= now:
             self._deliver(oid)
         else:

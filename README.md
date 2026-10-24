@@ -50,5 +50,14 @@ checker checks every choice, sends it back once if it breaks a rule, and uses th
 Pick the model with `PESHKASH_MODEL` (default `claude-opus-5-5`; `claude-haiku-5-5` is faster and much cheaper), or
 turn the AI off with `PESHKASH_AI=0`.
 
+## Marketer page
+While the bot runs, open **http://localhost:8010** on the same computer:
+- **Live bot**: classmates, offers sent, claim and stop rates, budget used, who chose each offer (AI, AI after the
+  checker refused its first choice, or rules), and the latest offers. Click one to see what Claude proposed and every
+  rule check.
+- **Decision log**: every decision, including the ones where nothing was sent and why.
+- **Rules**: the bot's real rules. Changes save automatically and apply from the bot's next decision.
+- The simulation screens (overview, customers, run offers, results) work on 1,500 made-up shoppers in the browser.
+
 ## Secrets
 Copy `.env.example` to `.env` and fill in your own values. `.env` is git-ignored; never commit tokens or keys.

@@ -36,13 +36,19 @@ Demo store: **BazaarKart**, a fictional Indian general marketplace. All customer
     (`live_view`). Queued offers are re-checked before sending. Rules are re-read from `data/rules.json` each time.
   - `store.py`: SQLite `data/live.db` (git-ignored): users (chat id only), profiles, offers, carts, live orders, events (audit log).
   - `texts.py`: everything the bot says in en/hi/pa. `telegram.py`: tiny Bot API client. `main.py`: the runner.
-- Coming next: FastAPI serving the app page in live mode (rules editing, live results and audit log).
+- **backend/web/server.py**: the marketer page, standard library `ThreadingHTTPServer` on 127.0.0.1 (default port
+  8010, started by `bot.main`). Serves `prototype/index.html` and `/api/status`, `/api/rules` (GET/PUT; PUT validates
+  with `Rules.from_dict` and writes `data/rules.json`, which the bot re-reads every decision), `/api/live`,
+  `/api/decisions`. `Api` methods return `(status, dict)` so tests call them directly. Never sends chat ids.
+- **prototype/index.html live mode**: when `/api/status` answers, the page adds "Live bot" and "Decision log", and the
+  Rules screen loads/saves the bot's rules (camelCase in the page ↔ snake_case on the server: `toServer`/`fromServer`).
+  The other screens stay a simulation on 1,500 in-browser shoppers and are labelled so.
 
 ## Run
 ```
 cd backend; .\.venv\Scripts\python -m peshkash.datagen     # writes data/generated/ and prints the realism checks
 cd backend; .\.venv\Scripts\python -m pytest
-cd backend; .\.venv\Scripts\python -m bot.main   # needs TELEGRAM_BOT_TOKEN (and ANTHROPIC_API_KEY for the AI) in ../.env
+cd backend; .\.venv\Scripts\python -m bot.main   # bot + marketer page on http://localhost:8010; needs TELEGRAM_BOT_TOKEN (and ANTHROPIC_API_KEY for the AI) in ../.env
 ```
 
 ## Glossary

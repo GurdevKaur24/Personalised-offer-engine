@@ -18,6 +18,7 @@ from . import texts
 from .app import OfferBot
 from .store import Store
 from .telegram import TelegramAPI, TelegramError
+from web.server import Api, serve
 
 BACKEND = Path(__file__).resolve().parent.parent
 DATA = BACKEND / "data"
@@ -38,6 +39,8 @@ def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description="Run the Peshkash Telegram bot.")
     ap.add_argument("--cart-minutes", type=float, default=2, help="minutes before a left cart gets a reminder")
+    ap.add_argument("--port", type=int, default=8010, help="port for the marketer page on this computer")
+    ap.add_argument("--no-web", action="store_true", help="don't start the marketer page")
     args = ap.parse_args()
 
     load_env(BACKEND.parent / ".env")
@@ -73,6 +76,14 @@ def main() -> None:
     bot = OfferBot(api, Store(DATA / "live.db"), customers, DATA / "rules.json", cart_delay=timedelta(minutes=args.cart_minutes),
                    chooser=chooser)
     print(f"Bot @{me['username']} is running with {len(customers):,} shoppers. Share this link: https://t.me/{me['username']}")
+    if not args.no_web:
+        page = Api(DATA, BACKEND.parent / "prototype" / "index.html", customers,
+                   {"bot": me["username"], "ai_model": chooser.model if chooser else None})
+        try:
+            serve(page, port=args.port)
+            print(f"Marketer page: http://localhost:{args.port}  (rules, live results, decision log)")
+        except OSError:
+            print(f"Port {args.port} is busy, so the marketer page is off. Try --port 8011.")
     print("Press Ctrl+C to stop.")
 
     offset = None
