@@ -21,6 +21,8 @@ class Decision:
     offer: Offer | None = None
     checks: list[Check] = field(default_factory=list)
     reason: str = ""
+    source: str = "rules"                # "ai", "ai_retry" (AI fixed it after the checker said no) or "rules"
+    attempts: list[dict] = field(default_factory=list)   # what the AI proposed and what the checker said
 
 
 def in_holdout(c: dict, r: Rules) -> bool:

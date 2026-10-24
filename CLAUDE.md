@@ -9,7 +9,8 @@ Demo store: **BazaarKart**, a fictional Indian general marketplace. All customer
 - **prototype/index.html**: single clickable page, opens as a file. Generates synthetic data in the browser from a fixed
   seed, runs rules, a *simulated* AI pick and the rule checker, previews Telegram messages, shows results. Tailwind and
   Chart.js from CDN.
-- **backend/**: Python 3.12, pytest. The `peshkash/` package is pure standard-library Python (no web framework):
+- **backend/**: Python 3.12, pytest, anthropic 2.3. The `peshkash/` package is plain Python (no web framework; only `agent.py` imports
+  the Anthropic SDK, and only when the real AI is used):
   - `catalog.py`: calendar (TODAY = Sat 24 Oct 2026, sales, salary days), categories with margins, cities, hidden personas.
   - `datagen.py`: synthetic customers (fixed seed) → `data/generated/peshkash.db` + CSVs (git-ignored).
     Personas are stored in their own table `hidden_personas` and only loaded with `with_personas=True`.
@@ -20,21 +21,28 @@ Demo store: **BazaarKart**, a fictional Indian general marketplace. All customer
   - `offers.py` + `messages.py`: build one offer (value, cost, timing, code) and its message in en/hi/pa.
   - `checker.py`: the rule checker. `check_customer` + `check_offer`; `safe_to_send` is the only gate to sending.
     Rule `cart_own_limit`: cart reminders skip the weekly limit and gap (one reminder per cart).
-  - `engine.py`: `decide()` picks the best allowed offer that passes every check (rule-based for now; the Claude
-    agent will choose from the same allowed list). Moves offers out of quiet hours. Holdout by customer id.
+  - `engine.py`: `decide()` picks the best allowed offer that passes every check (rule-based). Moves offers out of
+    quiet hours. Holdout by customer id. Also the safety net for the AI.
+  - `agent.py`: `ai_decide()` asks Claude (structured output; the offer-type enum is only the allowed types) to pick an
+    offer and write the first two message lines; the code/expiry line is always ours. The checker checks it; on
+    failure Claude gets one retry with the problems; then the rule-based offer. `Decision.source` is "ai",
+    "ai_retry" or "rules"; `Decision.attempts` keeps what the AI proposed. `ClaudeChooser`: model from
+    `PESHKASH_MODEL` (default claude-opus-5-5), effort low, server-side refusal fallback, IPv4-only HTTP.
+  - Checker rule "matches": every % and ₹ in the message must be one the offer gives, and the value and any minimum
+    order must be stated. "language" looks only at the two written lines.
 - **backend/bot/**: the Telegram bot, standard library only (urllib long polling; no python-telegram-bot).
   - `app.py` (`OfferBot`): behaviour, testable with a fake Telegram. `handle(update)` + `tick()` (queued offers,
     cart reminders). Each classmate gets a synthetic shopper; their live offers, carts and orders are added on top
     (`live_view`). Queued offers are re-checked before sending. Rules are re-read from `data/rules.json` each time.
   - `store.py`: SQLite `data/live.db` (git-ignored): users (chat id only), profiles, offers, carts, live orders, events (audit log).
   - `texts.py`: everything the bot says in en/hi/pa. `telegram.py`: tiny Bot API client. `main.py`: the runner.
-- Coming next: the Claude agent (anthropic SDK), FastAPI serving the app page in live mode.
+- Coming next: FastAPI serving the app page in live mode (rules editing, live results and audit log).
 
 ## Run
 ```
 cd backend; .\.venv\Scripts\python -m peshkash.datagen     # writes data/generated/ and prints the realism checks
 cd backend; .\.venv\Scripts\python -m pytest
-cd backend; .\.venv\Scripts\python -m bot.main   # needs TELEGRAM_BOT_TOKEN in ../.env
+cd backend; .\.venv\Scripts\python -m bot.main   # needs TELEGRAM_BOT_TOKEN (and ANTHROPIC_API_KEY for the AI) in ../.env
 ```
 
 ## Glossary

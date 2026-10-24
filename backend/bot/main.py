@@ -10,6 +10,7 @@ import traceback
 from datetime import timedelta
 from pathlib import Path
 
+from peshkash.agent import ClaudeChooser
 from peshkash.datagen import generate, load_sqlite, write_csv, write_sqlite
 from peshkash.features import customer_view
 
@@ -63,7 +64,14 @@ def main() -> None:
         print(f"Could not reach Telegram: {e}. Check the token and the internet connection.")
         sys.exit(1)
     api.set_commands(texts.COMMANDS)
-    bot = OfferBot(api, Store(DATA / "live.db"), customers, DATA / "rules.json", cart_delay=timedelta(minutes=args.cart_minutes))
+    chooser = None
+    if os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("PESHKASH_AI", "1") != "0":
+        chooser = ClaudeChooser()
+        print(f"AI: {chooser.model} chooses offers within the rules (set PESHKASH_AI=0 in .env for rules only).")
+    else:
+        print("AI: off (no ANTHROPIC_API_KEY, or PESHKASH_AI=0). Offers are rule-based.")
+    bot = OfferBot(api, Store(DATA / "live.db"), customers, DATA / "rules.json", cart_delay=timedelta(minutes=args.cart_minutes),
+                   chooser=chooser)
     print(f"Bot @{me['username']} is running with {len(customers):,} shoppers. Share this link: https://t.me/{me['username']}")
     print("Press Ctrl+C to stop.")
 

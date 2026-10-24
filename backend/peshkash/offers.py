@@ -57,7 +57,7 @@ def coupon_code(c: dict, o: Offer) -> str:
 def make_offer(c: dict, type: str, rules: Rules, *, cat: str | None = None, pct: int = 0, flat: int = 0, min_order: int = 0,
                send_hour: int | None = None, send_day: int | None = None, expiry_days: int | None = None,
                lang: str | None = None, no_expiry: bool = False, extra_line: str = "", reason: str = "",
-               today: date = TODAY) -> Offer:
+               today: date = TODAY, custom_lines: tuple[str, str] | None = None) -> Offer:
     """Build an offer for a customer view `c`. Nothing here checks the rules; that is the checker's job."""
     o = Offer(type=type, pct=pct, flat=flat, min_order=min_order, lang=lang or c["lang"], reason=reason,
               expiry_days=rules.expiry_days if expiry_days is None else expiry_days)
@@ -79,7 +79,7 @@ def make_offer(c: dict, type: str, rules: Rules, *, cat: str | None = None, pct:
     o.code = coupon_code(c, o)
     o.expiry_date = today + timedelta(days=o.send_day + o.expiry_days)
     o.expiry_label = fmt_date(o.expiry_date, o.lang)
-    o.text = render_message(c, o, o.lang, no_expiry=no_expiry, extra_line=extra_line)
+    o.text = render_message(c, o, o.lang, no_expiry=no_expiry, extra_line=extra_line, custom_lines=custom_lines)
     return o
 
 

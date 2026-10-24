@@ -88,8 +88,12 @@ MSG = {
 }
 
 
-def render_message(c: dict, o, lang: str, no_expiry: bool = False, extra_line: str = "") -> str:
-    """Three lines: greeting + hook, the offer, the code and expiry. `o` is an Offer."""
+def render_message(c: dict, o, lang: str, no_expiry: bool = False, extra_line: str = "",
+                   custom_lines: tuple[str, str] | None = None) -> str:
+    """Three lines: greeting + hook, the offer, the code and expiry. `o` is an Offer.
+
+    `custom_lines` replaces the first two lines with ones the AI wrote; the code and expiry line is always ours.
+    """
     T = MSG[lang]
     cat = (CATS[o.cat]["name"] if lang == "en" else CATS[o.cat][lang]) if o.cat else ""
     key = o.type
@@ -99,9 +103,11 @@ def render_message(c: dict, o, lang: str, no_expiry: bool = False, extra_line: s
         key = "cart_reminder_pct"
     item = c["cart"]["items"][0]["name"] if o.type == "cart_reminder" else ""
     hook = T["cart_hook"] if o.type == "cart_reminder" else T["hook"][c["seg"]]
-    lines = [
+    first_two = [" ".join(x.split()) for x in custom_lines] if custom_lines else [
         f"{T['hi'].format(n=c['first'])} {hook}",
         T["offer"][key].format(pct=o.pct, cat=cat, flat=o.flat, min=o.min_order, pts=o.pts, item=item),
+    ]
+    lines = first_two + [
         T["code_only"].format(code=o.code) if no_expiry else T["code"].format(code=o.code, d=fmt_date(o.expiry_date, lang)),
     ]
     if extra_line:

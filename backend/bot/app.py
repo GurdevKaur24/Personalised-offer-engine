@@ -11,6 +11,7 @@ from pathlib import Path
 
 from peshkash.catalog import CAT_KEYS, CATS
 from peshkash.checker import check_customer, failed
+from peshkash.agent import ai_decide
 from peshkash.engine import decide
 from peshkash.offers import describe
 from peshkash.rules import Rules, load_rules
@@ -31,8 +32,9 @@ def esc(s) -> str:
 
 class OfferBot:
     def __init__(self, api, store: Store, customers: list[dict], rules: Rules | Path | None = None,
-                 clock=ist_now, cart_delay: timedelta = timedelta(minutes=2)):
+                 clock=ist_now, cart_delay: timedelta = timedelta(minutes=2), chooser=None):
         self.api, self.store, self.clock, self.cart_delay = api, store, clock, cart_delay
+        self.chooser = chooser                               # the AI (Claude); None means rule-based offers only
         self._rules = rules
         self.by_id = {c["id"]: c for c in customers}
         # Profiles handed to classmates: shoppers who would get an offer today, grouped by segment for variety.
@@ -109,10 +111,17 @@ class OfferBot:
         """Decide and send (or queue) an offer. Returns the offer id, or None with an explanation sent."""
         now, r, T = self.clock(), self.rules(), self._t(chat_id)
         c = self.live_view(chat_id)
-        d = decide(c, r, self.store.spent(), now_hour=now.hour, today=now.date(), only=only, use_holdout=False)
+        kw = dict(now_hour=now.hour, today=now.date(), only=only, use_holdout=False)
+        if self.chooser:
+            if hasattr(self.api, "send_typing"):
+                self.api.send_typing(chat_id)                # Claude takes a few seconds
+            d = ai_decide(c, r, self.chooser, self.store.spent(), **kw)
+        else:
+            d = decide(c, r, self.store.spent(), **kw)
         self.store.log(chat_id, "decision", json.dumps({"trigger": trigger, "customer": c["id"], "outcome": d.outcome,
                                                         "offer": describe(d.offer) if d.offer else None, "reason": d.reason,
-                                                        "failed": [x.id for x in failed(d.checks)]}, ensure_ascii=False), now)
+                                                        "failed": [x.id for x in failed(d.checks)], "source": d.source,
+                                                        "ai_attempts": d.attempts}, ensure_ascii=False), now)
         if d.outcome != "offer":
             if only:                                         # a silent trigger (cart): say nothing
                 return None
@@ -131,7 +140,7 @@ class OfferBot:
         o = d.offer
         send_at = now if (o.send_day == 0 and o.send_hour == now.hour) else \
             datetime.combine(now.date() + timedelta(days=o.send_day), time(o.send_hour), IST)
-        oid = self.store.add_offer(chat_id, c["id"], o, describe(o), "queued", trigger, now, send_at, d.checks)
+        oid = self.store.add_offer(chat_id, c["id"], o, describe(o), "queued", trigger, now, send_at, d.checks, d.source)
         if send_at <= now:
             self._deliver(oid)
         else:

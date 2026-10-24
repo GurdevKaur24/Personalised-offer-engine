@@ -65,6 +65,12 @@ class TelegramAPI:
                         link_preview_options={"is_disabled": True})
         return msg["message_id"]
 
+    def send_typing(self, chat_id: int):
+        try:
+            self.call("sendChatAction", chat_id=chat_id, action="typing")
+        except TelegramError:
+            pass
+
     def answer_callback(self, callback_id: str, text: str | None = None):
         """Only stops the button's loading spinner, so it never blocks the real work (old taps can't be answered)."""
         try:

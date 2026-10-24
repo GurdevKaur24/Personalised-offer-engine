@@ -230,3 +230,37 @@ def test_every_decision_is_logged(make_bot):
     bot.handle(msg(1, "/offer"))
     kinds = [r["kind"] for r in bot.store.db.execute("SELECT kind FROM events")]
     assert kinds.count("decision") == 2 and "sent" in kinds
+
+
+class EchoAI:
+    """A fake Claude that takes the rule-based suggestion's type and writes its own two lines."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def choose(self, system, messages, schema):
+        self.calls += 1
+        t = schema["properties"]["offer_type"]["enum"][0]
+        ans = {"offer_type": t, "category": "none", "percent_off": 0, "flat_off": 0, "min_order": 0,
+               "message_line1": "Hi there 👋 A little something for you", "message_line2": "⭐ A treat from BazaarKart",
+               "reason": "Fake AI reason."}
+        return ans, json.dumps(ans)
+
+
+def test_with_an_ai_the_bot_sends_ai_written_offers_and_records_the_source(customers):
+    api, clock = FakeTelegram(), Clock(datetime(2026, 10, 24, 14, 0, tzinfo=IST))
+    api.typing = []
+    api.send_typing = api.typing.append
+    ai = EchoAI()
+    bot = OfferBot(api, Store(":memory:"), customers[:400], Rules(), clock=clock, chooser=ai)
+    for chat in range(1, 8):
+        join(bot, api, chat)
+    rows = offers(bot)
+    assert ai.calls >= 7 and api.typing
+    assert {r["source"] for r in rows} <= {"ai", "ai_retry", "rules"} and any(r["source"] == "ai" for r in rows)
+    for r in rows:
+        assert all(c["ok"] for c in json.loads(r["checks"]))
+        if r["source"] == "ai":
+            assert r["text"].startswith("Hi there") and r["reason"] == "Fake AI reason."
+    logged = [json.loads(e["detail"]) for e in bot.store.db.execute("SELECT detail FROM events WHERE kind='decision'")]
+    assert all("source" in d and "ai_attempts" in d for d in logged)

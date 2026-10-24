@@ -3,6 +3,7 @@
 Nothing is sent unless `check_customer` and `check_offer` both pass. The AI's choices go through the same checks
 as everything else, so a limit holds even if the AI ignores it.
 """
+import re
 from dataclasses import dataclass
 
 from .catalog import LANGS
@@ -26,9 +27,10 @@ CHECKS = {
     "words":    ("Banned words", "Message used a banned word"),
     "length":   ("Message length", "Message too long"),
     "language": ("Customer's language", "Message not in the customer's language"),
+    "matches":  ("Message matches the offer", "Message promised something the offer doesn't give"),
 }
 CUSTOMER_CHECKS = ["optout", "recent", "returns", "weekcap", "gap"]
-OFFER_CHECKS = ["allowed", "discount", "margin", "budget", "quiet", "expiry", "words", "length", "language"]
+OFFER_CHECKS = ["allowed", "discount", "margin", "budget", "quiet", "expiry", "words", "length", "language", "matches"]
 MARGIN_TOLERANCE = .0005          # rupee rounding of the discount must not fail an offer that is exactly at the floor
 
 
@@ -110,6 +112,24 @@ def check_customer(c: dict, r: Rules, cart_trigger: bool = False) -> list[Check]
     return checks
 
 
+def _matches(o: Offer) -> tuple[bool, str]:
+    """Every % and ₹ amount in the message must be one the offer really gives, and the value must be stated."""
+    body = "\n".join(o.text.split("\n")[:2])                # the code/expiry line is ours
+    pcts = {int(x) for x in re.findall(r"(\d+)\s*%", body)}
+    rupees = {int(x.replace(",", "")) for x in re.findall(r"₹\s*(\d[\d,]*)", body)}
+    wrong = [f"{p}%" for p in sorted(pcts - ({o.pct} if o.pct else set()))]
+    wrong += [f"₹{x:,}" for x in sorted(rupees - {o.flat, o.min_order, o.pts, 0})]
+    if wrong:
+        return False, f"Message says {', '.join(wrong)}, which the offer doesn't give."
+    if o.pct and o.pct not in pcts:
+        return False, f"Message doesn't say the discount ({o.pct}%)."
+    if o.flat and o.flat not in rupees:
+        return False, f"Message doesn't say the amount off (₹{o.flat})."
+    if o.min_order and o.min_order not in rupees:
+        return False, f"Message doesn't say the minimum order (₹{o.min_order:,})."
+    return True, "Every amount in the message matches the offer."
+
+
 def check_offer(c: dict, o: Offer, r: Rules, spent: int = 0) -> list[Check]:
     if o.type == "cart_reminder":
         lim = min(r.cart_max_pct, r.max_pct)
@@ -122,7 +142,7 @@ def check_offer(c: dict, o: Offer, r: Rules, spent: int = 0) -> list[Check]:
         disc = (True, "No price discount.")
     text = o.text.lower()
     banned = next((w for w in r.banned if w and w.lower() in text), None)
-    wrote = script_lang(o.text)
+    wrote = script_lang("\n".join(o.text.split("\n")[:2]))   # the written lines; the code/expiry line is ours
     expiry_shown = o.expiry_label in o.text
     expiry_ok = 2 <= o.expiry_days <= r.expiry_days and (not r.require_expiry or expiry_shown)
     expiry_note = (", expiry date shown." if expiry_shown else ", but the message does not show the expiry date.") if r.require_expiry else "."
@@ -140,6 +160,7 @@ def check_offer(c: dict, o: Offer, r: Rules, spent: int = 0) -> list[Check]:
         Check("words", banned is None, f'Uses "{banned}".' if banned else "No banned words."),
         Check("length", len(o.text) <= r.max_chars, f"{len(o.text)} characters (limit {r.max_chars})."),
         Check("language", wrote == c["lang"], f"Written in {LANGS[wrote]}; customer reads {LANGS[c['lang']]}."),
+        Check("matches", *_matches(o)),
     ]
 
 

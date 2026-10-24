@@ -11,7 +11,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (chat_id INTEGER PRIMARY KEY, customer_id TEXT, lang TEXT, started_at TEXT, stopped INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS profiles (chat_id INTEGER, customer_id TEXT, assigned_at TEXT);
 CREATE TABLE IF NOT EXISTS offers (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, customer_id TEXT, type TEXT,
-  summary TEXT, code TEXT, expiry TEXT, cost INTEGER, text TEXT, reason TEXT, status TEXT, trigger TEXT, created_at TEXT, send_at TEXT,
+  summary TEXT, code TEXT, expiry TEXT, cost INTEGER, text TEXT, reason TEXT, status TEXT, trigger TEXT, source TEXT, created_at TEXT, send_at TEXT,
   sent_at TEXT, answered_at TEXT, message_id INTEGER, checks TEXT);
 CREATE TABLE IF NOT EXISTS carts (chat_id INTEGER PRIMARY KEY, items TEXT, started_at TEXT, updated_at TEXT, reminded INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS live_orders (chat_id INTEGER, customer_id TEXT, at TEXT, value INTEGER, items TEXT);
@@ -27,6 +27,8 @@ class Store:
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        if "source" not in {r[1] for r in self.db.execute("PRAGMA table_info(offers)")}:   # made before the AI agent
+            self.db.execute("ALTER TABLE offers ADD COLUMN source TEXT")
 
     def _one(self, sql, *args):
         return self.db.execute(sql, args).fetchone()
@@ -57,11 +59,11 @@ class Store:
         return {r[0] for r in self.db.execute("SELECT customer_id FROM profiles")}
 
     # ----- offers -----
-    def add_offer(self, chat_id, customer_id, offer, summary, status, trigger, now, send_at, checks) -> int:
+    def add_offer(self, chat_id, customer_id, offer, summary, status, trigger, now, send_at, checks, source="rules") -> int:
         cur = self._run(
-            "INSERT INTO offers (chat_id, customer_id, type, summary, code, expiry, cost, text, reason, status, trigger, created_at, send_at, checks)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            chat_id, customer_id, offer.type, summary, offer.code, offer.expiry_label, offer.cost, offer.text, offer.reason, status, trigger,
+            "INSERT INTO offers (chat_id, customer_id, type, summary, code, expiry, cost, text, reason, status, trigger, source, created_at, send_at, checks)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            chat_id, customer_id, offer.type, summary, offer.code, offer.expiry_label, offer.cost, offer.text, offer.reason, status, trigger, source,
             now.isoformat(), send_at.isoformat(), json.dumps([{"id": c.id, "ok": c.ok, "detail": c.detail} for c in checks], ensure_ascii=False))
         return cur.lastrowid
 

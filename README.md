@@ -45,5 +45,10 @@ Classmates pick English, Hindi or Punjabi, get a made-up shopper profile and off
 postpone or stop offers. `/shop` lets them fill a cart; leave it for 2 minutes and a cart reminder arrives (if the rules
 allow). Offers asked for during quiet hours wait until morning. Every decision is logged in `backend/data/live.db`.
 
+With `ANTHROPIC_API_KEY` in `.env`, Claude chooses and writes each offer from the offers the rules allow; the rule
+checker checks every choice, sends it back once if it breaks a rule, and uses the rule-based offer if it still does.
+Pick the model with `PESHKASH_MODEL` (default `claude-opus-5-5`; `claude-haiku-5-5` is faster and much cheaper), or
+turn the AI off with `PESHKASH_AI=0`.
+
 ## Secrets
 Copy `.env.example` to `.env` and fill in your own values. `.env` is git-ignored; never commit tokens or keys.
