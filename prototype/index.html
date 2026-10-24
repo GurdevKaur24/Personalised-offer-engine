@@ -1,0 +1,1375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peshkash · Offer Engine (Prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Gurmukhi:wght@400;600&display=swap" rel="stylesheet">
+<!-- Prototype only: Tailwind's Play CDN builds styles in the browser. Pre-build it (like Samay) before going live. -->
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'Noto Sans Devanagari', 'Noto Sans Gurmukhi', 'system-ui', 'sans-serif'] } } } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root { --series-1: #2a78d6; --series-1-soft: #a9c8ef; --series-2: #eb6834; --grid: #e7e5e4; --ink-2: #52514e; }
+  body { background: #f8fafc; }
+  .fade-in { animation: fadein .2s ease-out; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .tg-bg { background-color: #d9e4c8; background-image: radial-gradient(rgba(255,255,255,.35) 1px, transparent 1px); background-size: 14px 14px; }
+  .tg-msg { white-space: pre-line; }
+  .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  input[type=range] { accent-color: #7c3aed; }
+</style>
+</head>
+<body class="text-slate-900 font-sans antialiased">
+<div id="app"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Peshkash prototype. Everything runs in the browser from a fixed seed,
+   so every load shows the same customers. Sections mirror the future
+   Python modules: datagen, features/segments, rules, agent (simulated),
+   checker, messages, simulation, then the screens.
+   ===================================================================== */
+
+/* ---------- 1. Seeded random ---------- */
+function hashStr(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const unit = key => mulberry32(hashStr(key))();   // stable 0..1 for a key
+function makeRng(seed) {
+  const r = mulberry32(seed);
+  const g = {
+    u: r,
+    int: (a, b) => a + Math.floor(r() * (b - a + 1)),
+    pick: arr => arr[Math.floor(r() * arr.length)],
+    chance: p => r() < p,
+    weighted(obj) {
+      const keys = Object.keys(obj); let tot = 0; for (const k of keys) tot += obj[k];
+      let x = r() * tot; for (const k of keys) { x -= obj[k]; if (x <= 0) return k; } return keys[keys.length - 1];
+    },
+    normal() { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); },
+    lognormal: (mu, s) => Math.exp(mu + s * g.normal()),
+    gamma(k, theta) {                                   // Marsaglia–Tsang
+      if (k < 1) return g.gamma(k + 1, theta) * Math.pow(r(), 1 / k);
+      const d = k - 1 / 3, c = 1 / Math.sqrt(9 * d);
+      for (;;) {
+        let x, v; do { x = g.normal(); v = 1 + c * x; } while (v <= 0);
+        v = v * v * v; const u = r();
+        if (u < 1 - 0.0331 * x ** 4 || Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v * theta;
+      }
+    },
+    poisson(l) { if (l > 30) return Math.max(0, Math.round(l + Math.sqrt(l) * g.normal())); const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= r(); } while (p > L); return k - 1; },
+  };
+  return g;
+}
+
+/* ---------- 2. Calendar, catalog, people ---------- */
+const TODAY = new Date(2026, 9, 24);                    // Sat 24 Oct 2026, 10 am (campaign planning time)
+const NOW_HOUR = 10;
+const DIWALI = new Date(2026, 10, 8);
+const HISTORY_DAYS = 550;
+const dateAgo = d => new Date(2026, 9, 24 - d);
+const agoOf = (y, m, d) => Math.round((TODAY - new Date(y, m - 1, d)) / 864e5);
+const DAYS_TO_DIWALI = Math.round((DIWALI - TODAY) / 864e5);
+
+const SALES = [                                          // [from, to, multiplier, festive?]
+  [[2025, 6, 27], [2025, 7, 6], 1.4, false],             // end-of-season sale
+  [[2025, 9, 22], [2025, 10, 21], 1.7, true],            // festive sale 2025
+  [[2025, 10, 14], [2025, 10, 20], 2.6, true],           // Diwali week 2025 (Diwali 20 Oct)
+  [[2026, 1, 17], [2026, 1, 21], 1.5, false],            // Republic Day sale
+  [[2026, 7, 10], [2026, 7, 19], 1.4, false],            // end-of-season sale
+  [[2026, 10, 1], [2026, 10, 24], 1.25, true],           // pre-Diwali build-up 2026
+];
+const SEASON = [], FESTIVE = [];
+for (let d = 0; d <= HISTORY_DAYS + 5; d++) {
+  const dt = dateAgo(d); let m = 1, fest = false, sale = 1;
+  if (dt.getDay() === 0 || dt.getDay() === 6) m *= 1.2;
+  if (dt.getDate() <= 5) m *= 1.3;                        // salary days
+  for (const [f, t, mult, isF] of SALES) if (d <= agoOf(...f) && d >= agoOf(...t)) { sale = Math.max(sale, mult); fest = fest || isF; }
+  SEASON[d] = m * sale; FESTIVE[d] = fest;
+}
+
+const CATS = {
+  fashion:     { name: 'Fashion', hi: 'फ़ैशन', pa: 'ਫ਼ੈਸ਼ਨ', price: 1300, margin: .45, ret: .22, share: .27,
+                 items: [['Phulkari dupatta', 899], ['Cotton kurta set', 1299], ['Denim jacket', 1899], ['Punjabi jutti', 999], ['Woollen shawl', 1599]] },
+  electronics: { name: 'Electronics', hi: 'इलेक्ट्रॉनिक्स', pa: 'ਇਲੈਕਟ੍ਰਾਨਿਕਸ', price: 3200, margin: .12, ret: .08, share: .12,
+                 items: [['Wireless earbuds', 1999], ['Smartwatch', 3499], ['Power bank 20000 mAh', 1299], ['Bluetooth speaker', 2499], ['5G phone', 13999]] },
+  beauty:      { name: 'Beauty', hi: 'ब्यूटी', pa: 'ਬਿਊਟੀ', price: 650, margin: .42, ret: .05, share: .14,
+                 items: [['Vitamin C serum', 549], ['Kajal and lipstick combo', 399], ['Bhringraj hair oil', 299], ['Perfume 100 ml', 899], ['Face wash', 249]] },
+  home:        { name: 'Home & Kitchen', hi: 'घर और रसोई', pa: 'ਘਰ ਤੇ ਰਸੋਈ', price: 1400, margin: .32, ret: .07, share: .14,
+                 items: [['Steel dinner set', 1499], ['Cotton bedsheet', 899], ['Pressure cooker 5 L', 1899], ['Diya and rangoli set', 499], ['LED string lights', 349]] },
+  grocery:     { name: 'Grocery', hi: 'किराना', pa: 'ਕਰਿਆਨਾ', price: 700, margin: .18, ret: .01, share: .21,
+                 items: [['Basmati rice 5 kg', 649], ['Dry fruits gift box', 999], ['Desi ghee 1 L', 699], ['Masala combo', 399], ['Atta 10 kg', 449]] },
+  sports:      { name: 'Sports', hi: 'खेल', pa: 'ਖੇਡਾਂ', price: 1300, margin: .30, ret: .06, share: .12,
+                 items: [['Cricket bat', 1499], ['Yoga mat', 699], ['Running shoes', 2199], ['Badminton racket pair', 999], ['Gym gloves', 399]] },
+};
+const CAT_KEYS = Object.keys(CATS);
+const DELIVERY_COST = 40;
+
+const CITIES = [['Delhi', 1, 14], ['Chandigarh', 1, 8], ['Ludhiana', 2, 12], ['Amritsar', 2, 9], ['Jalandhar', 2, 7], ['Mohali', 2, 5],
+  ['Patiala', 2, 6], ['Bathinda', 3, 5], ['Moga', 3, 3], ['Hoshiarpur', 3, 3], ['Pathankot', 3, 3], ['Phagwara', 3, 2], ['Sangrur', 3, 3],
+  ['Firozpur', 3, 2], ['Barnala', 3, 2], ['Karnal', 3, 3], ['Panipat', 3, 3]];
+const FIRST_F = ['Simran', 'Harpreet', 'Gurleen', 'Navneet', 'Priya', 'Ananya', 'Jasleen', 'Manpreet', 'Ritika', 'Kirandeep', 'Pooja', 'Neha', 'Amrit', 'Sukhmani', 'Tanvi', 'Ishita', 'Mehak', 'Komal', 'Rupinder', 'Sakshi'];
+const FIRST_M = ['Arjun', 'Harjot', 'Gurpreet', 'Rohan', 'Karan', 'Jaskaran', 'Aman', 'Vikram', 'Rajveer', 'Manav', 'Ishaan', 'Sahil', 'Navdeep', 'Kabir', 'Yuvraj', 'Ankit', 'Parminder', 'Rahul', 'Tejbir', 'Deepak'];
+const SURNAMES = ['Singh', 'Sharma', 'Gill', 'Sandhu', 'Verma', 'Arora', 'Grewal', 'Bansal', 'Malhotra', 'Sidhu', 'Dhillon', 'Mehta', 'Kapoor', 'Bedi', 'Chopra', 'Ahuja', 'Khanna', 'Brar', 'Garg', 'Saini'];
+const LANGS = { en: 'English', hi: 'Hindi', pa: 'Punjabi' };
+
+/* Hidden personas: they drive how a synthetic customer behaves and how they would respond to an offer.
+   The engine never reads them; only the data generator and the response simulation do.
+   base = chance of buying in the next 14 days with no offer; s* = how much each kind of offer moves them. */
+const PERSONAS = {
+  loyal_premium:  { label: 'Loyal premium',  share: .08, perYear: 14,  aov: 1.8, disc: .08, browse: 10,  cartOpen: .25, base: .50, sDisc: .05, sDeliv: .05, sPoints: .35, sPerk: .45, optRisk: .005 },
+  regular:        { label: 'Regular',        share: .19, perYear: 7,   aov: 1.0, disc: .25, browse: 5,   cartOpen: .20, base: .26, sDisc: .35, sDeliv: .30, sPoints: .25, sPerk: .15, optRisk: .01 },
+  deal_seeker:    { label: 'Deal seeker',    share: .16, perYear: 6,   aov: .7,  disc: .75, browse: 9,   cartOpen: .35, base: .12, sDisc: .90, sDeliv: .45, sPoints: .10, sPerk: .05, optRisk: .01 },
+  new_explorer:   { label: 'New explorer',   share: .11, perYear: 8,   aov: .9,  disc: .35, browse: 7,   cartOpen: .30, base: .18, sDisc: .45, sDeliv: .50, sPoints: .10, sPerk: .10, optRisk: .015 },
+  at_risk:        { label: 'Drifting away',  share: .12, perYear: 8,   aov: 1.1, disc: .30, browse: 1.2, cartOpen: .08, base: .07, sDisc: .60, sDeliv: .30, sPoints: .15, sPerk: .10, optRisk: .015 },
+  window_shopper: { label: 'Window shopper', share: .13, perYear: 1.5, aov: .8,  disc: .40, browse: 14,  cartOpen: .50, base: .04, sDisc: .20, sDeliv: .35, sPoints: .05, sPerk: .05, optRisk: .02 },
+  festive_only:   { label: 'Festive only',   share: .10, perYear: 2,   aov: 1.3, disc: .45, browse: 3,   cartOpen: .20, base: .16, sDisc: .55, sDeliv: .25, sPoints: .05, sPerk: .10, optRisk: .015 },
+  lapsed:         { label: 'Lapsed',         share: .11, perYear: 5,   aov: .9,  disc: .30, browse: .2,  cartOpen: .02, base: .02, sDisc: .20, sDeliv: .05, sPoints: .02, sPerk: .02, optRisk: .05 },
+};
+
+/* ---------- 3. Synthetic data ---------- */
+function generateData(n) {
+  const rng = makeRng(20261024);
+  const personaW = Object.fromEntries(Object.entries(PERSONAS).map(([k, p]) => [k, p.share]));
+  const cityW = Object.fromEntries(CITIES.map(c => [c[0], c[2]]));
+  const cityTier = Object.fromEntries(CITIES.map(c => [c[0], c[1]]));
+  const catShare = Object.fromEntries(CAT_KEYS.map(k => [k, CATS[k].share]));
+  const hourW = { 9: 4, 10: 5, 11: 4, 12: 5, 13: 7, 14: 5, 16: 4, 17: 6, 18: 9, 19: 12, 20: 13, 21: 6, 22: 4, 23: 2 };
+  const festiveWindows = SALES.filter(s => s[3]).map(([f, t]) => [agoOf(...f), agoOf(...t)]);
+  const list = [];
+
+  for (let i = 0; i < n; i++) {
+    const persona = rng.weighted(personaW), P = PERSONAS[persona];
+    const female = rng.chance(.48);
+    let last = rng.pick(SURNAMES); if (female && last === 'Singh') last = 'Kaur';
+    const first = rng.pick(female ? FIRST_F : FIRST_M);
+    const city = rng.weighted(cityW), tier = cityTier[city];
+    const lang = rng.weighted(tier === 1 ? { en: 6, hi: 3, pa: 1 } : tier === 2 ? { en: 45, hi: 25, pa: 30 } : { en: 30, hi: 25, pa: 45 });
+    const age = rng.weighted({ '18–24': 24, '25–34': 38, '35–44': 24, '45+': 14 });
+    const signupAgo = persona === 'new_explorer' ? rng.int(4, 70) : Math.round(Math.min(1500, 100 + rng.gamma(1.5, 280)));
+    const activeEnd = persona === 'at_risk' ? rng.int(45, 150) : persona === 'lapsed' ? rng.int(190, 480) : 0;
+    const perYear = P.perYear * rng.lognormal(0, .6);
+    const aovMult = P.aov * rng.lognormal(0, .3);
+    const discAff = Math.min(.95, Math.max(.02, P.disc + rng.normal() * .1));
+    const returnMult = rng.chance(.03) ? 3.5 : rng.lognormal(0, .3);
+    const fav1 = rng.weighted(catShare); let fav2 = fav1; while (fav2 === fav1) fav2 = rng.weighted(catShare);
+    const catW = Object.fromEntries(CAT_KEYS.map(k => [k, CATS[k].share * (k === fav1 ? 5 : k === fav2 ? 2.5 : 1)]));
+    const codP = [0, .18, .32, .5][tier];
+    const start = Math.min(signupAgo, HISTORY_DAYS);
+
+    const orders = [];
+    const addOrder = (d0, lo = Math.max(0, activeEnd), hi = start) => {
+      // Shoppers shift purchases a few days toward weekends, salary days and sales.
+      const near = {}; for (let x = Math.max(lo, d0 - 3); x <= Math.min(hi, d0 + 3); x++) near[x] = SEASON[x] ** 2;
+      const d = Object.keys(near).length ? +rng.weighted(near) : d0;
+      const cat = rng.weighted(catW);
+      const value = Math.max(99, Math.round(CATS[cat].price * aovMult * rng.lognormal(-.1, .5) / 10) * 10 - 1);
+      orders.push({
+        d, cat, value,
+        disc: rng.chance(Math.min(.95, discAff * (FESTIVE[d] ? 1.25 : 1))),
+        pay: rng.chance(codP) ? 'COD' : rng.chance(.72) ? 'UPI' : 'Card',
+        ret: rng.chance(Math.min(.8, CATS[cat].ret * returnMult)),
+      });
+    };
+    if (persona === 'festive_only') {
+      // Buys mostly in festive sales, rarely otherwise.
+      for (const [from, to] of festiveWindows) {
+        const a = Math.min(from, start), b = Math.max(to, activeEnd);
+        if (a < b) continue;
+        for (let k = rng.poisson(1.7 * Math.min(1, (a - b + 1) / (from - to + 1))); k > 0; k--) addOrder(rng.int(b, a));
+      }
+      for (let k = rng.poisson(.5 * start / 365); k > 0; k--) addOrder(rng.int(activeEnd, start));
+    } else {
+      // Gaps between orders follow a gamma distribution; sales, weekends and salary days squeeze them.
+      const meanGap = 365 / perYear;
+      let t = persona === 'new_explorer' ? (rng.chance(.75) ? start - rng.gamma(1, 6) : -1) : start - rng.u() * Math.min(meanGap, 90);
+      while (t >= 0 && t > activeEnd && orders.length < 150) {
+        const d = Math.round(t);
+        addOrder(d, 0, start);
+        t -= rng.gamma(2, meanGap / 2) / SEASON[d];
+      }
+    }
+    orders.sort((a, b) => a.d - b.d);                     // most recent first
+
+    // Loyalty points: 1 point per ₹50 on kept orders, worth ₹1 each, expire after 12 months.
+    const keep = .3 + rng.u() * .6;
+    let earned = 0, expiring = 0;
+    for (const o of orders) if (!o.ret && o.d <= 365) { const p = Math.floor(o.value / 50); earned += p; if (o.d >= 335) expiring += p; }
+
+    // Browsing and carts.
+    const sessions30 = rng.poisson(P.browse * (FESTIVE[0] ? 1.3 : 1) * rng.lognormal(0, .4));
+    const recency = orders.length ? orders[0].d : null;
+    let lastVisit = sessions30 ? Math.min(29, Math.floor(rng.gamma(1, 30 / (sessions30 + 1)))) : Math.min(recency ?? 999, 30 + rng.int(0, 90));
+    const orders90 = orders.filter(o => o.d <= 90).length;
+    const abandoned90 = rng.poisson(orders90 * 2.1 + sessions30 * .25);
+    let cart = null;
+    if (sessions30 > 0 && rng.chance(P.cartOpen)) {
+      const items = [];
+      for (let k = rng.int(1, 3); k > 0; k--) { const cat = rng.weighted(catW); const [name, price] = rng.pick(CATS[cat].items); items.push({ name, price, cat }); }
+      const value = items.reduce((s, x) => s + x.price, 0);
+      const hoursAgo = rng.int(1, 120);
+      lastVisit = Math.min(lastVisit, Math.floor(hoursAgo / 24));
+      cart = { items, value, hoursAgo, margin: items.reduce((s, x) => s + x.price * CATS[x.cat].margin, 0) / value };
+    }
+    const browse = [];
+    for (let k = 0; k < Math.min(4, sessions30); k++) { const cat = rng.weighted(catW); browse.push({ d: lastVisit + k * rng.int(0, 4), cat, item: rng.pick(CATS[cat].items)[0] }); }
+
+    // Offers already received from earlier campaigns.
+    const lastOfferAgo = rng.chance(.7) ? Math.floor(rng.gamma(1.5, 8)) : 99;
+    const offersThisWeek = lastOfferAgo < 7 ? (rng.chance(.2) ? 2 : 1) : 0;
+
+    list.push({
+      id: 'C' + (10001 + i), first, name: `${first} ${last}`, gender: female ? 'F' : 'M', age, city, tier, lang,
+      signupAgo, orders, sessions30, lastVisit, abandoned90, cart, browse,
+      points: Math.round(earned * keep), ptsExp: Math.round(expiring * keep),
+      lastOfferAgo, offersThisWeek, optedOut: rng.chance(.025 + P.optRisk),
+      activeHour: +rng.weighted(hourW),
+      _persona: persona,                                  // hidden: never read by the engine
+    });
+  }
+  return list;
+}
+
+/* ---------- 4. Features and segments (what the engine sees) ---------- */
+const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function addFeatures(c) {
+  const o = c.orders;
+  c.total = o.length;
+  c.recency = o.length ? o[0].d : null;
+  const o365 = o.filter(x => x.d <= 365);
+  c.f365 = o365.length;
+  c.m365 = o365.reduce((s, x) => s + x.value, 0);
+  c.spendAll = o.reduce((s, x) => s + x.value, 0);
+  c.aov = c.total ? Math.round(c.spendAll / c.total) : 900;
+  const gaps = []; for (let i = 1; i < o.length; i++) gaps.push(o[i].d - o[i - 1].d);
+  c.usualGap = Math.round(Math.min(365, Math.max(7, gaps.length >= 2 ? median(gaps) : 365 / Math.max(1, c.f365))));
+  c.churn = c.total ? 1 / (1 + Math.exp(-2.2 * (c.recency / c.usualGap - 1.8))) : null;
+  c.discAff = c.total ? o.filter(x => x.disc).length / c.total : null;
+  c.returnRate = c.total ? o.filter(x => x.ret).length / c.total : 0;
+  c.codShare = c.total ? o.filter(x => x.pay === 'COD').length / c.total : 0;
+  c.catSpend = Object.fromEntries(CAT_KEYS.map(k => [k, 0]));
+  const catCount = Object.fromEntries(CAT_KEYS.map(k => [k, 0]));
+  for (const x of o) { c.catSpend[x.cat] += x.value; catCount[x.cat]++; }
+  c.catAov = Object.fromEntries(CAT_KEYS.map(k => [k, catCount[k] ? Math.round(c.catSpend[k] / catCount[k]) : Math.round(CATS[k].price * c.aov / 1200)]));
+  c.topCats = CAT_KEYS.filter(k => c.catSpend[k] > 0).sort((a, b) => c.catSpend[b] - c.catSpend[a]);
+  if (!c.topCats.length) c.topCats = [...new Set([...(c.cart ? c.cart.items.map(x => x.cat) : []), ...c.browse.map(b => b.cat)])];
+  c.blendMargin = c.spendAll ? CAT_KEYS.reduce((s, k) => s + c.catSpend[k] * CATS[k].margin, 0) / c.spendAll : .3;
+  c.festiveShare = c.total ? o.filter(x => FESTIVE[x.d]).length / c.total : 0;
+  c.seg = segmentOf(c);
+  return c;
+}
+
+const SEGMENTS = {
+  champions: { label: 'Champions',       chip: 'bg-emerald-100 text-emerald-800', play: 'Thank them with points and early access. They buy anyway, so discounts mostly lose margin.' },
+  loyal:     { label: 'Loyal',           chip: 'bg-teal-100 text-teal-800',       play: 'Keep them close with points and free delivery.' },
+  new:       { label: 'New',             chip: 'bg-sky-100 text-sky-800',         play: 'Win the second order with a small welcome offer.' },
+  attention: { label: 'Needs attention', chip: 'bg-amber-100 text-amber-800',     play: 'A gentle nudge on their favourite category.' },
+  at_risk:   { label: 'At risk',         chip: 'bg-orange-100 text-orange-800',   play: 'Win them back before they leave. This is where a discount pays off most.' },
+  lost:      { label: 'Lost',            chip: 'bg-rose-100 text-rose-800',       play: 'One win-back try, then stop messaging.' },
+  bargain:   { label: 'Bargain hunters', chip: 'bg-violet-100 text-violet-800',   play: 'Flat ₹ off above a minimum order protects margin.' },
+};
+const SEG_KEYS = Object.keys(SEGMENTS);
+
+function segmentOf(c) {
+  if (c.signupAgo <= 60 || (c.total <= 1 && c.signupAgo <= 120)) return 'new';
+  if (c.total === 0) return 'attention';
+  if (c.recency > 180) return 'lost';
+  if (c.churn >= .6 && c.total >= 3) return 'at_risk';
+  if (c.f365 >= 10 && c.recency <= 30) return 'champions';
+  if (c.discAff >= .55 && c.total >= 3) return 'bargain';
+  if (c.f365 >= 5 && c.recency <= 60) return 'loyal';
+  return 'attention';
+}
+function whySegment(c) {
+  switch (c.seg) {
+    case 'new': return `Joined ${c.signupAgo} days ago and has ${plural(c.total, 'order')}.`;
+    case 'lost': return `Last order was ${c.recency} days ago (more than 180).`;
+    case 'at_risk': return `Usually orders every ${c.usualGap} days, but the last order was ${c.recency} days ago.`;
+    case 'champions': return `${c.f365} orders in the last 12 months, and bought ${ago(c.recency)}.`;
+    case 'bargain': return `${pct(c.discAff)} of their orders used a coupon.`;
+    case 'loyal': return `${c.f365} orders in the last 12 months, last one ${ago(c.recency)}.`;
+    default: return c.total === 0 ? `Signed up ${c.signupAgo} days ago but has not ordered yet.` : `Buys now and then (${plural(c.f365, 'order')} in 12 months): not loyal yet, not at risk.`;
+  }
+}
+
+/* ---------- 5. Offers and rules (set by the marketing team) ---------- */
+const OFFERS = {
+  pct_off:         { label: '% off a category',             short: '% off',           icon: '🏷️' },
+  flat_off:        { label: 'Flat ₹ off above a minimum',   short: 'Flat ₹ off',      icon: '💸' },
+  free_delivery:   { label: 'Free delivery',                short: 'Free delivery',   icon: '🚚' },
+  double_points:   { label: '2× loyalty points',            short: '2× points',       icon: '⭐' },
+  points_reminder: { label: 'Points expiry reminder',       short: 'Points reminder', icon: '⏳' },
+  cart_reminder:   { label: 'Cart reminder',                short: 'Cart reminder',   icon: '🛒' },
+  early_access:    { label: 'Early access to Diwali sale',  short: 'Early access',    icon: '🪔' },
+  win_back:        { label: 'Win-back discount',            short: 'Win-back',        icon: '💌' },
+  welcome:         { label: 'Welcome offer',                short: 'Welcome',         icon: '👋' },
+};
+const OFFER_KEYS = Object.keys(OFFERS);
+
+const DEFAULT_RULES = {
+  maxPct: 20, maxFlat: 300, marginFloor: 10, budget: 150000,
+  maxPerWeek: 2, minGapDays: 3, quietFrom: 21, quietTo: 9,
+  skipRecentDays: 3, maxReturnPct: 40, holdoutPct: 10,
+  cartMaxPct: 5, welcomeFlat: 100, expiryDays: 7, requireExpiry: true, maxChars: 350,
+  banned: ['guaranteed', 'free money', 'last chance ever', 'risk-free', '100% free'],
+  grid: {
+    champions: ['double_points', 'early_access', 'points_reminder', 'cart_reminder'],
+    loyal:     ['double_points', 'free_delivery', 'early_access', 'points_reminder', 'cart_reminder'],
+    new:       ['welcome', 'free_delivery', 'cart_reminder'],
+    attention: ['pct_off', 'flat_off', 'free_delivery', 'points_reminder', 'cart_reminder'],
+    at_risk:   ['pct_off', 'flat_off', 'free_delivery', 'points_reminder', 'cart_reminder'],
+    lost:      ['win_back', 'points_reminder'],
+    bargain:   ['flat_off', 'free_delivery', 'cart_reminder', 'points_reminder'],
+  },
+};
+const RULES_KEY = 'peshkash.rules.v1';
+function loadRules() {
+  const base = structuredClone(DEFAULT_RULES);
+  try { const saved = JSON.parse(localStorage.getItem(RULES_KEY) || 'null'); if (saved) return { ...base, ...saved, grid: { ...base.grid, ...(saved.grid || {}) } }; } catch (e) { /* storage blocked: use defaults */ }
+  return base;
+}
+function saveRules(r) { try { localStorage.setItem(RULES_KEY, JSON.stringify(r)); } catch (e) { /* ignore */ } }
+
+const isQuiet = (h, R) => R.quietFrom > R.quietTo ? (h >= R.quietFrom || h < R.quietTo) : (h >= R.quietFrom && h < R.quietTo);
+const maxPctByMargin = (m, R) => Math.max(0, Math.floor((m - R.marginFloor / 100) * 100 + 1e-9));
+
+/* Offer types this customer may get under the rules (what the AI is allowed to choose from). */
+function allowedOffers(c, R) {
+  return (R.grid[c.seg] || []).filter(t => {
+    if (t === 'cart_reminder') return !!c.cart;
+    if (t === 'points_reminder') return c.ptsExp >= 50;
+    if (t === 'welcome') return c.total <= 1 && R.maxFlat > 0;
+    if (t === 'pct_off' || t === 'win_back') return R.maxPct > 0;
+    if (t === 'flat_off') return R.maxFlat > 0;
+    return true;
+  });
+}
+
+/* ---------- 6. Building one offer: value, cost, timing, message ---------- */
+const round = (x, step) => Math.round(x / step) * step;
+function costOf(o, eff) {
+  switch (o.type) {
+    case 'pct_off': case 'win_back': case 'cart_reminder': return Math.round(o.pct / 100 * eff);
+    case 'flat_off': case 'welcome': return o.flat;
+    case 'free_delivery': return DELIVERY_COST;
+    case 'double_points': return Math.round(eff / 50);
+    default: return 0;                                    // reminders and early access cost nothing
+  }
+}
+function makeOffer(c, type, p, R) {
+  const o = { type, cat: null, pct: 0, flat: 0, minOrder: 0, pts: 0, expiryDays: R.expiryDays, lang: c.lang, ...p };
+  if (type === 'pct_off' && !o.cat) o.cat = c.topCats[0] || 'fashion';
+  if (type !== 'pct_off') o.cat = null;
+  if (type === 'cart_reminder') { o.basket = c.cart.value; o.m = c.cart.margin; }
+  else if (o.cat) { o.basket = c.catAov[o.cat]; o.m = CATS[o.cat].margin; }
+  else { o.basket = c.aov; o.m = c.blendMargin; }
+  if (type === 'points_reminder') o.pts = c.ptsExp;
+  o.eff = Math.max(o.basket, o.minOrder || 0);
+  o.cost = costOf(o, o.eff);
+  o.marginAfter = o.m - o.cost / o.eff;
+  if (o.sendHour == null) o.sendHour = c.activeHour;
+  if (o.sendDay == null) o.sendDay = o.sendHour <= NOW_HOUR ? 1 : 0;
+  o.code = couponCode(c, o);
+  o.expiryDate = new Date(2026, 9, 24 + o.sendDay + o.expiryDays);
+  o.expiryLabel = fmtDate(o.expiryDate, o.lang);
+  o.text = renderMessage(c, o, o.lang, p);
+  return o;
+}
+function couponCode(c, o) {
+  const abbr = { pct_off: (o.cat || 'deal').slice(0, 4).toUpperCase(), flat_off: 'FLAT', welcome: 'HELLO', free_delivery: 'SHIP', double_points: '2XPTS',
+    points_reminder: 'PTS', cart_reminder: 'CART', early_access: 'EARLY', win_back: 'BACK' }[o.type];
+  return `BK${abbr}${o.pct || o.flat || ''}-${hashStr(c.id + o.type).toString(36).toUpperCase().slice(-3)}`;
+}
+
+/* ---------- 7. Messages in English, Hindi and Punjabi ---------- */
+const MONTHS = {
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  hi: ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'],
+  pa: ['ਜਨਵਰੀ', 'ਫ਼ਰਵਰੀ', 'ਮਾਰਚ', 'ਅਪ੍ਰੈਲ', 'ਮਈ', 'ਜੂਨ', 'ਜੁਲਾਈ', 'ਅਗਸਤ', 'ਸਤੰਬਰ', 'ਅਕਤੂਬਰ', 'ਨਵੰਬਰ', 'ਦਸੰਬਰ'],
+};
+const fmtDate = (dt, lang = 'en') => `${dt.getDate()} ${MONTHS[lang][dt.getMonth()]}`;
+const MSG = {
+  en: {
+    hi: n => `Hi ${n} 👋`,
+    hook: { champions: 'Thank you for being one of our favourite shoppers!', loyal: 'Good to see you again!', new: 'Welcome to BazaarKart!',
+            attention: 'Something special for you this Diwali season.', at_risk: 'We miss you at BazaarKart!', lost: "It's been a while! Come and see what's new.",
+            bargain: 'A deal picked just for you.' },
+    cartHook: 'You left something in your cart 🛒',
+    offer: {
+      pct_off: (o, cat) => `🎁 Get ${o.pct}% off ${cat}`,
+      win_back: o => `💌 Here's ${o.pct}% off your next order`,
+      flat_off: o => `💸 Get ₹${o.flat} off on orders above ₹${o.minOrder}`,
+      welcome: o => `👋 ₹${o.flat} off your next order above ₹${o.minOrder}`,
+      free_delivery: o => `🚚 Free delivery on your next order${o.minOrder ? ` above ₹${o.minOrder}` : ''}`,
+      double_points: () => '⭐ Earn 2× points on your next order',
+      points_reminder: o => `⏳ ${o.pts} of your points (worth ₹${o.pts}) expire soon. Use them before they're gone`,
+      cart_reminder: (o, cat, item) => `🛒 Your ${item} is still waiting${o.pct ? `, now with ${o.pct}% off` : ''}`,
+      early_access: () => '🪔 Shop our Diwali sale 24 hours before everyone else',
+    },
+    code: (code, d) => `Code: ${code} · Valid till ${d}`,
+    codeOnly: code => `Code: ${code}`,
+    welcomeBot: c => `Welcome to BazaarKart Offers! 🛍️\nFor this demo you are ${c.name}, ${c.age}, from ${c.city}. The offers you get here are picked for this shopper.\nTap "Stop offers" under any message to stop.`,
+    buttons: ['🛍️ Claim offer', 'Not now', 'Stop offers'],
+    claim: (code, d) => `🎉 Done! Code ${code} is saved to your account and applies at checkout till ${d}.`,
+    later: d => `No problem. The offer stays open till ${d}.`,
+    stop: "Done. You won't get any more offers. Send /start to turn them back on.",
+  },
+  hi: {
+    hi: n => `नमस्ते ${n} 👋`,
+    hook: { champions: 'हमारे सबसे ख़ास ग्राहकों में से एक होने के लिए शुक्रिया!', loyal: 'आपको फिर से देखकर अच्छा लगा!', new: 'BazaarKart में आपका स्वागत है!',
+            attention: 'इस दिवाली सीज़न आपके लिए कुछ ख़ास।', at_risk: 'BazaarKart पर हमें आपकी याद आ रही है!', lost: 'काफ़ी समय हो गया! आइए, देखिए क्या नया है।',
+            bargain: 'आपके लिए चुनी गई एक ख़ास डील।' },
+    cartHook: 'आपके कार्ट में कुछ छूट गया है 🛒',
+    offer: {
+      pct_off: (o, cat) => `🎁 ${cat} पर ${o.pct}% की छूट पाएँ`,
+      win_back: o => `💌 आपके अगले ऑर्डर पर ${o.pct}% की छूट`,
+      flat_off: o => `💸 ₹${o.minOrder} से ज़्यादा के ऑर्डर पर ₹${o.flat} की छूट`,
+      welcome: o => `👋 ₹${o.minOrder} से ज़्यादा के अगले ऑर्डर पर ₹${o.flat} की छूट`,
+      free_delivery: o => `🚚 आपके अगले ऑर्डर पर मुफ़्त डिलीवरी${o.minOrder ? ` (₹${o.minOrder} से ज़्यादा)` : ''}`,
+      double_points: () => '⭐ अगले ऑर्डर पर 2× पॉइंट्स कमाएँ',
+      points_reminder: o => `⏳ आपके ${o.pts} पॉइंट्स (₹${o.pts} के) जल्द ख़त्म होने वाले हैं। उससे पहले इस्तेमाल करें`,
+      cart_reminder: (o, cat, item) => `🛒 आपका ${item} अभी भी कार्ट में है${o.pct ? `, अब ${o.pct}% छूट के साथ` : ''}`,
+      early_access: () => '🪔 दिवाली सेल में सबसे 24 घंटे पहले ख़रीदारी करें',
+    },
+    code: (code, d) => `कोड: ${code} · ${d} तक मान्य`,
+    codeOnly: code => `कोड: ${code}`,
+    welcomeBot: c => `BazaarKart Offers में आपका स्वागत है! 🛍️\nइस डेमो में आप ${c.name} हैं, ${c.city} से। यहाँ मिलने वाले ऑफ़र इसी ग्राहक के लिए चुने गए हैं।\nरोकने के लिए किसी भी संदेश के नीचे "ऑफ़र बंद करें" दबाएँ।`,
+    buttons: ['🛍️ ऑफ़र लें', 'अभी नहीं', 'ऑफ़र बंद करें'],
+    claim: (code, d) => `🎉 हो गया! कोड ${code} आपके खाते में सेव है और ${d} तक चेकआउट पर लगेगा।`,
+    later: d => `कोई बात नहीं। ऑफ़र ${d} तक खुला है।`,
+    stop: 'ठीक है। अब आपको कोई ऑफ़र नहीं भेजा जाएगा। फिर से शुरू करने के लिए /start भेजें।',
+  },
+  pa: {
+    hi: n => `ਸਤ ਸ੍ਰੀ ਅਕਾਲ ${n} 👋`,
+    hook: { champions: 'ਸਾਡੇ ਸਭ ਤੋਂ ਖ਼ਾਸ ਗਾਹਕਾਂ ਵਿੱਚੋਂ ਇੱਕ ਹੋਣ ਲਈ ਧੰਨਵਾਦ!', loyal: 'ਤੁਹਾਨੂੰ ਮੁੜ ਵੇਖ ਕੇ ਖ਼ੁਸ਼ੀ ਹੋਈ!', new: 'BazaarKart ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ!',
+            attention: 'ਇਸ ਦੀਵਾਲੀ ਸੀਜ਼ਨ ਤੁਹਾਡੇ ਲਈ ਕੁਝ ਖ਼ਾਸ।', at_risk: 'BazaarKart ਤੇ ਸਾਨੂੰ ਤੁਹਾਡੀ ਯਾਦ ਆ ਰਹੀ ਹੈ!', lost: 'ਕਾਫ਼ੀ ਸਮਾਂ ਹੋ ਗਿਆ! ਆਓ, ਵੇਖੋ ਕੀ ਨਵਾਂ ਹੈ।',
+            bargain: 'ਤੁਹਾਡੇ ਲਈ ਚੁਣੀ ਇੱਕ ਖ਼ਾਸ ਡੀਲ।' },
+    cartHook: 'ਤੁਹਾਡੇ ਕਾਰਟ ਵਿੱਚ ਕੁਝ ਰਹਿ ਗਿਆ ਹੈ 🛒',
+    offer: {
+      pct_off: (o, cat) => `🎁 ${cat} ਤੇ ${o.pct}% ਛੋਟ ਪਾਓ`,
+      win_back: o => `💌 ਤੁਹਾਡੇ ਅਗਲੇ ਆਰਡਰ ਤੇ ${o.pct}% ਛੋਟ`,
+      flat_off: o => `💸 ₹${o.minOrder} ਤੋਂ ਵੱਧ ਦੇ ਆਰਡਰ ਤੇ ₹${o.flat} ਦੀ ਛੋਟ`,
+      welcome: o => `👋 ₹${o.minOrder} ਤੋਂ ਵੱਧ ਦੇ ਅਗਲੇ ਆਰਡਰ ਤੇ ₹${o.flat} ਦੀ ਛੋਟ`,
+      free_delivery: o => `🚚 ਤੁਹਾਡੇ ਅਗਲੇ ਆਰਡਰ ਤੇ ਮੁਫ਼ਤ ਡਿਲੀਵਰੀ${o.minOrder ? ` (₹${o.minOrder} ਤੋਂ ਵੱਧ)` : ''}`,
+      double_points: () => '⭐ ਅਗਲੇ ਆਰਡਰ ਤੇ 2× ਪੁਆਇੰਟ ਕਮਾਓ',
+      points_reminder: o => `⏳ ਤੁਹਾਡੇ ${o.pts} ਪੁਆਇੰਟ (₹${o.pts} ਦੇ) ਜਲਦੀ ਖ਼ਤਮ ਹੋ ਰਹੇ ਹਨ। ਪਹਿਲਾਂ ਵਰਤ ਲਓ`,
+      cart_reminder: (o, cat, item) => `🛒 ਤੁਹਾਡਾ ${item} ਹਾਲੇ ਵੀ ਕਾਰਟ ਵਿੱਚ ਹੈ${o.pct ? `, ਹੁਣ ${o.pct}% ਛੋਟ ਨਾਲ` : ''}`,
+      early_access: () => '🪔 ਦੀਵਾਲੀ ਸੇਲ ਵਿੱਚ ਸਭ ਤੋਂ 24 ਘੰਟੇ ਪਹਿਲਾਂ ਖ਼ਰੀਦਦਾਰੀ ਕਰੋ',
+    },
+    code: (code, d) => `ਕੋਡ: ${code} · ${d} ਤੱਕ ਵੈਧ`,
+    codeOnly: code => `ਕੋਡ: ${code}`,
+    welcomeBot: c => `BazaarKart Offers ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ! 🛍️\nਇਸ ਡੈਮੋ ਵਿੱਚ ਤੁਸੀਂ ${c.name} ਹੋ, ${c.city} ਤੋਂ। ਇੱਥੇ ਮਿਲਣ ਵਾਲੇ ਆਫ਼ਰ ਇਸੇ ਗਾਹਕ ਲਈ ਚੁਣੇ ਗਏ ਹਨ।\nਰੋਕਣ ਲਈ ਕਿਸੇ ਵੀ ਸੁਨੇਹੇ ਹੇਠਾਂ "ਆਫ਼ਰ ਬੰਦ ਕਰੋ" ਦਬਾਓ।`,
+    buttons: ['🛍️ ਆਫ਼ਰ ਲਓ', 'ਹਾਲੇ ਨਹੀਂ', 'ਆਫ਼ਰ ਬੰਦ ਕਰੋ'],
+    claim: (code, d) => `🎉 ਹੋ ਗਿਆ! ਕੋਡ ${code} ਤੁਹਾਡੇ ਖਾਤੇ ਵਿੱਚ ਸੇਵ ਹੈ ਅਤੇ ${d} ਤੱਕ ਚੈੱਕਆਊਟ ਤੇ ਲੱਗੇਗਾ।`,
+    later: d => `ਕੋਈ ਗੱਲ ਨਹੀਂ। ਆਫ਼ਰ ${d} ਤੱਕ ਖੁੱਲ੍ਹਾ ਹੈ।`,
+    stop: 'ਠੀਕ ਹੈ। ਹੁਣ ਤੁਹਾਨੂੰ ਕੋਈ ਆਫ਼ਰ ਨਹੀਂ ਭੇਜਿਆ ਜਾਵੇਗਾ। ਮੁੜ ਸ਼ੁਰੂ ਕਰਨ ਲਈ /start ਭੇਜੋ।',
+  },
+};
+function renderMessage(c, o, lang, opt = {}) {
+  const T = MSG[lang];
+  const cat = o.cat ? (lang === 'en' ? CATS[o.cat].name : CATS[o.cat][lang]) : '';
+  const item = o.type === 'cart_reminder' ? c.cart.items[0].name : '';
+  const lines = [
+    `${T.hi(c.first)} ${o.type === 'cart_reminder' ? T.cartHook : T.hook[c.seg]}`,
+    T.offer[o.type](o, cat, item),
+    opt.noExpiry ? T.codeOnly(o.code) : T.code(o.code, fmtDate(o.expiryDate, lang)),
+  ];
+  if (opt.banned) lines.push('Guaranteed lowest price, only for you!');
+  return lines.join('\n');
+}
+const scriptLang = text => /[਀-੿]/.test(text) ? 'pa' : /[ऀ-ॿ]/.test(text) ? 'hi' : 'en';
+
+/* ---------- 8. Rule checker: the source of truth for "safe to send" ---------- */
+const CHECKS = {
+  optout:   { label: 'Has not stopped offers',        short: 'Customer stopped offers' },
+  recent:   { label: 'Did not buy very recently',     short: 'Bought very recently' },
+  returns:  { label: 'Return rate within limit',      short: 'Returns too many orders' },
+  weekcap:  { label: 'Weekly offer limit',            short: 'Already got enough offers this week' },
+  gap:      { label: 'Days since last offer',         short: 'Got an offer too recently' },
+  allowed:  { label: 'Offer allowed for this segment', short: 'Offer type not allowed for the segment' },
+  discount: { label: 'Discount within limit',         short: 'Discount above the limit' },
+  margin:   { label: 'Margin floor',                  short: 'Would break the margin floor' },
+  budget:   { label: 'Campaign budget',               short: 'Not enough budget left' },
+  quiet:    { label: 'Quiet hours',                   short: 'Planned during quiet hours' },
+  expiry:   { label: 'Expiry date',                   short: 'Expiry missing or too long' },
+  words:    { label: 'Banned words',                  short: 'Message used a banned word' },
+  length:   { label: 'Message length',                short: 'Message too long' },
+  language: { label: "Customer's language",           short: "Message not in the customer's language" },
+};
+function checkCustomer(c, R) {
+  return [
+    { id: 'optout', ok: !c.optedOut, detail: c.optedOut ? 'Tapped "Stop offers" earlier.' : 'Still happy to get offers.' },
+    { id: 'recent', ok: c.recency == null || c.recency >= R.skipRecentDays,
+      detail: c.recency != null && c.recency < R.skipRecentDays ? `Bought ${ago(c.recency)}; the rule skips anyone who bought in the last ${plural(R.skipRecentDays, 'day')}.` : `No order in the last ${plural(R.skipRecentDays, 'day')}.` },
+    { id: 'returns', ok: c.total < 3 || c.returnRate * 100 <= R.maxReturnPct, detail: `Returns ${pct(c.returnRate)} of orders (limit ${R.maxReturnPct}%).` },
+    { id: 'weekcap', ok: c.offersThisWeek < R.maxPerWeek, detail: `${plural(c.offersThisWeek, 'offer')} this week (limit ${R.maxPerWeek}).` },
+    { id: 'gap', ok: c.lastOfferAgo >= R.minGapDays, detail: c.lastOfferAgo >= 99 ? 'No recent offers.' : `Last offer ${ago(c.lastOfferAgo)} (needs ${plural(R.minGapDays, 'day')} in between).` },
+  ];
+}
+function checkOffer(c, o, R, spent) {
+  const disc = o.type === 'cart_reminder' ? { ok: o.pct <= Math.min(R.cartMaxPct, R.maxPct), d: `Cart discount ${o.pct}% (limit ${Math.min(R.cartMaxPct, R.maxPct)}%).` }
+    : o.type === 'pct_off' || o.type === 'win_back' ? { ok: o.pct <= R.maxPct, d: `Discount ${o.pct}% (limit ${R.maxPct}%).` }
+    : o.type === 'flat_off' || o.type === 'welcome' ? { ok: o.flat <= R.maxFlat, d: `₹${o.flat} off (limit ₹${R.maxFlat}).` }
+    : { ok: true, d: 'No price discount.' };
+  const banned = R.banned.find(w => w && o.text.toLowerCase().includes(w.toLowerCase()));
+  const wrote = scriptLang(o.text);
+  return [
+    { id: 'allowed', ok: (R.grid[c.seg] || []).includes(o.type), detail: `${OFFERS[o.type].label} for ${SEGMENTS[c.seg].label}.` },
+    { id: 'discount', ok: disc.ok, detail: disc.d },
+    { id: 'margin', ok: o.cost === 0 || o.marginAfter >= R.marginFloor / 100 - .0005, detail: o.cost === 0 ? 'Costs nothing, so margin is unchanged.' : `Leaves ${pct(o.marginAfter)} margin on a ${inr(o.eff)} order (floor ${R.marginFloor}%).` },
+    { id: 'budget', ok: spent + o.cost <= R.budget, detail: `Costs up to ${inr(o.cost)}; ${inr(Math.max(0, R.budget - spent))} of the budget left.` },
+    { id: 'quiet', ok: !isQuiet(o.sendHour, R), detail: `Sends ${o.sendDay ? 'tomorrow' : 'today'} at ${hourLabel(o.sendHour)} (quiet hours ${hourLabel(R.quietFrom)} to ${hourLabel(R.quietTo)}).` },
+    { id: 'expiry', ok: o.expiryDays >= 2 && o.expiryDays <= R.expiryDays && (!R.requireExpiry || o.text.includes(o.expiryLabel)),
+      detail: `Valid for ${plural(o.expiryDays, 'day')} (2 to ${R.expiryDays} allowed)${R.requireExpiry ? (o.text.includes(o.expiryLabel) ? ', expiry date shown.' : ', but the message does not show the expiry date.') : '.'}` },
+    { id: 'words', ok: !banned, detail: banned ? `Uses "${banned}".` : 'No banned words.' },
+    { id: 'length', ok: o.text.length <= R.maxChars, detail: `${o.text.length} characters (limit ${R.maxChars}).` },
+    { id: 'language', ok: wrote === c.lang, detail: `Written in ${LANGS[wrote]}; customer reads ${LANGS[c.lang]}.` },
+  ];
+}
+const failed = checks => checks.filter(x => !x.ok);
+
+/* ---------- 9. The AI chooser (SIMULATED in the prototype) ----------
+   Stands in for Claude. It sees only the allowed offers and the customer's
+   features, and makes the kinds of mistakes a real model makes: sending at
+   the customer's usual late-night hour, discounting a low-margin category,
+   writing in English, forgetting the expiry, an over-eager phrase. */
+function aiPick(c, allowed, R, careful = false) {
+  const score = {
+    cart_reminder: 100,
+    welcome: 85,
+    win_back: 80,
+    points_reminder: 55 + Math.min(30, c.ptsExp / 10),
+    pct_off: 15 + 60 * (c.discAff || 0) + 20 * (c.churn || 0),
+    flat_off: 20 + 50 * (c.discAff || 0) + (c.aov > 1500 ? 10 : 0),
+    free_delivery: 30 + (c.tier === 3 ? 25 : 0) + (c.aov < 900 ? 15 : 0) + (c.codShare > .4 ? 5 : 0),
+    double_points: 30 + (c.f365 >= 5 ? 25 : 0) + (c.points > 300 ? 10 : 0),
+    early_access: 35 + (c.seg === 'champions' ? 30 : 0) + (c.festiveShare > .4 ? 15 : 0),
+  };
+  let choices = [...allowed];
+  if (!careful && unit(c.id + 'stray') < .03) {                       // occasionally reaches for an offer the rules don't allow
+    const stray = ['pct_off', 'double_points', 'free_delivery'].find(t => !allowed.includes(t));
+    if (stray) choices = [stray];
+  }
+  const type = choices.sort((a, b) => score[b] + unit(c.id + b) * 6 - score[a] - unit(c.id + a) * 6)[0];
+  const p = { sendHour: c.activeHour };
+  const over = !careful && unit(c.id + 'over') < .08 ? 5 : 0;          // sometimes rounds up past the limit
+  if (type === 'pct_off') { p.cat = c.topCats[0] || 'fashion'; p.pct = Math.max(5, Math.min(R.maxPct, round(5 + 12 * (c.churn || .3) + 10 * (c.discAff || .3), 5))) + over; }
+  if (type === 'win_back') p.pct = Math.max(5, Math.min(R.maxPct, 20)) + over;
+  if (type === 'cart_reminder' && c.cart.hoursAgo > 24 && (c.discAff || 0) > .4) p.pct = Math.min(R.cartMaxPct, R.maxPct);
+  if (type === 'flat_off') { p.flat = Math.max(50, Math.min(R.maxFlat, round(c.aov * .1, 50))) + (over ? 50 : 0); p.minOrder = Math.max(299, round(c.aov * 1.2, 100) - 1); }
+  if (type === 'welcome') { p.flat = Math.min(R.welcomeFlat, R.maxFlat); p.minOrder = 499; }
+  if (type === 'free_delivery' && c.aov < 500) p.minOrder = 499;
+  if (!careful) {
+    if (c.lang !== 'en' && unit(c.id + 'lang') < .05) p.lang = 'en';
+    if (unit(c.id + 'banned') < .03) p.banned = true;
+    if (unit(c.id + 'noexp') < .03) p.noExpiry = true;
+    if (unit(c.id + 'long') < .04) p.expiryDays = DAYS_TO_DIWALI;   // "valid till Diwali"
+  }
+  const o = makeOffer(c, type, p, R);
+  o.reason = aiReason(c, o);
+  return o;
+}
+function aiReason(c, o) {
+  const fav = c.topCats[0] ? CATS[c.topCats[0]].name : 'new arrivals';
+  switch (o.type) {
+    case 'cart_reminder': return `Left ${inr(c.cart.value)} in the cart ${c.cart.hoursAgo < 24 ? `${c.cart.hoursAgo} hours` : `${Math.round(c.cart.hoursAgo / 24)} days`} ago${o.pct ? ' and often waits for a coupon, so a small discount' : '; a reminder alone often brings them back'}.`;
+    case 'welcome': return `New customer with ${plural(c.total, 'order')}; the second order is the hardest to win.`;
+    case 'win_back': return `No order for ${c.recency} days. One clear win-back offer before we stop messaging.`;
+    case 'points_reminder': return `${c.ptsExp} points expire within 30 days; a reminder costs nothing.`;
+    case 'pct_off': return `Usually orders every ${c.usualGap} days, last order ${c.recency ?? '–'} days ago. ${o.cat === c.topCats[0] ? `Likes ${fav}, so a discount there is most likely to bring them back.` : `Likes ${fav}, but its margin is too thin for a discount, so the offer is on ${CATS[o.cat].name}.`}`;
+    case 'flat_off': return `Uses coupons on ${pct(c.discAff || 0)} of orders. Flat ₹ off above ${inr(o.minOrder)} lifts the basket and protects margin.`;
+    case 'free_delivery': return `${c.tier === 3 ? 'Smaller city, ' : ''}average order ${inr(c.aov)}; delivery charges put off small orders.`;
+    case 'double_points': return `${c.f365} orders this year and ${c.points} points. Rewards matter more to them than discounts.`;
+    case 'early_access': return `${SEGMENTS[c.seg].label}: would buy anyway, so a perk instead of a discount keeps margin.`;
+  }
+  return '';
+}
+
+/* The AI is told what failed and tries again (simulated: it fixes each problem,
+   and re-checks its own answer before replying). */
+function aiRetry(c, first, problems, allowed, R, spent) {
+  let offer = first, probs = problems;
+  const fixes = [];
+  for (let pass = 0; pass < 3 && probs.length; pass++) {
+    const r = fixOnce(c, offer, probs, allowed, R);
+    fixes.push(...r.fixes); offer = r.offer;
+    probs = failed(checkOffer(c, offer, R, spent));
+  }
+  return { offer, fixes };
+}
+function fixOnce(c, first, problems, allowed, R) {
+  const fixes = [];
+  let type = first.type;
+  const p = { cat: first.cat, pct: first.pct, flat: first.flat, minOrder: first.minOrder, sendHour: first.sendHour, sendDay: first.sendDay, expiryDays: first.expiryDays };
+  const ids = new Set(problems.map(x => x.id));
+  if (ids.has('allowed')) {
+    const alt = aiPick(c, allowed, R, true);
+    type = alt.type; Object.assign(p, { cat: alt.cat, pct: alt.pct, flat: alt.flat, minOrder: alt.minOrder });
+    fixes.push(`Swapped to an offer allowed for ${SEGMENTS[c.seg].label}: ${OFFERS[type].label.toLowerCase()}.`);
+  }
+  if (ids.has('discount')) {
+    const lim = type === 'cart_reminder' ? Math.min(R.cartMaxPct, R.maxPct) : R.maxPct;
+    if (p.pct > lim) { fixes.push(`Lowered the discount from ${p.pct}% to ${lim}%.`); p.pct = lim; }
+    if (p.flat > R.maxFlat) { fixes.push(`Lowered ₹${p.flat} off to ₹${R.maxFlat}.`); p.flat = R.maxFlat; }
+  }
+  if (ids.has('margin')) {
+    if (type === 'pct_off') {
+      const here = Math.floor(maxPctByMargin(CATS[p.cat].margin, R) / 5) * 5;
+      const better = c.topCats.concat(CAT_KEYS).find(k => k !== p.cat && maxPctByMargin(CATS[k].margin, R) >= Math.min(p.pct, 10));
+      if (here >= 5) { fixes.push(`Lowered ${CATS[p.cat].name} discount from ${p.pct}% to ${here}% to keep the ${R.marginFloor}% margin floor.`); p.pct = here; }
+      else if (better) { fixes.push(`${CATS[p.cat].name} margin is too thin for a discount; moved the offer to ${CATS[better].name}.`); p.cat = better; p.pct = Math.min(p.pct, Math.floor(maxPctByMargin(CATS[better].margin, R) / 5) * 5); }
+    } else if (type === 'win_back') {
+      const lim = Math.floor(maxPctByMargin(c.blendMargin, R) / 5) * 5;
+      if (lim >= 5) { fixes.push(`Lowered the win-back discount from ${p.pct}% to ${lim}% to keep the margin floor.`); p.pct = lim; }
+    } else if (type === 'flat_off' || type === 'welcome' || type === 'free_delivery') {
+      const cost = type === 'free_delivery' ? DELIVERY_COST : p.flat;
+      const room = c.blendMargin - R.marginFloor / 100;
+      if (room > .01) { const mo = Math.ceil(cost / room / 100) * 100 - 1; fixes.push(`Raised the minimum order to ${inr(mo)} so the offer keeps the margin floor.`); p.minOrder = mo; }
+    } else if (type === 'cart_reminder' && p.pct) { fixes.push('Removed the cart discount: these items have too little margin.'); p.pct = 0; }
+  }
+  if (ids.has('budget')) {
+    const free = ['points_reminder', 'cart_reminder', 'early_access'].find(t => allowed.includes(t));
+    if (free) { type = free; p.pct = 0; fixes.push(`Budget is nearly used up; switched to a no-cost ${OFFERS[free].label.toLowerCase()}.`); }
+  }
+  if (ids.has('quiet')) {
+    const h = R.quietFrom - 1 >= R.quietTo ? R.quietFrom - 1 : R.quietTo;
+    fixes.push(`Moved the send time from ${hourLabel(p.sendHour)} to ${hourLabel(h)} (outside quiet hours).`);
+    p.sendHour = h; p.sendDay = h <= NOW_HOUR ? 1 : p.sendDay;
+  }
+  if (ids.has('expiry')) { if (p.expiryDays > R.expiryDays || p.expiryDays < 2) { fixes.push(`Set the offer to last ${R.expiryDays} days.`); p.expiryDays = R.expiryDays; } else fixes.push('Added the expiry date to the message.'); }
+  if (ids.has('words')) fixes.push('Rewrote the message without the banned phrase.');
+  if (ids.has('language')) fixes.push(`Rewrote the message in ${LANGS[c.lang]}.`);
+  if (ids.has('length')) fixes.push('Shortened the message.');
+  const o = makeOffer(c, type, p, R);
+  o.reason = aiReason(c, o);
+  return { offer: o, fixes };
+}
+
+/* Safe rule-based default: used when the AI can't produce a passing offer, and for the "rules only" strategy. */
+function ruleDefault(c, allowed, R, spent) {
+  const safeHour = isQuiet(c.activeHour, R) ? (R.quietFrom - 1 >= R.quietTo ? R.quietFrom - 1 : R.quietTo) : c.activeHour;
+  const order = ['cart_reminder', 'points_reminder', 'welcome', 'win_back', 'early_access', 'double_points', 'free_delivery', 'flat_off', 'pct_off'];
+  for (const type of order) {
+    if (!allowed.includes(type)) continue;
+    const p = { sendHour: safeHour };
+    if (type === 'win_back') p.pct = Math.min(R.maxPct, 15, Math.floor(maxPctByMargin(c.blendMargin, R) / 5) * 5);
+    if (type === 'welcome') { p.flat = Math.min(R.welcomeFlat, R.maxFlat); p.minOrder = 499; }
+    if (type === 'flat_off') { p.flat = Math.min(R.maxFlat, 100); p.minOrder = 999; }
+    if (type === 'free_delivery') p.minOrder = 499;
+    if (type === 'pct_off') {
+      const cat = c.topCats.concat(CAT_KEYS).find(k => maxPctByMargin(CATS[k].margin, R) >= 10) || 'fashion';
+      p.cat = cat; p.pct = Math.min(R.maxPct, 10);
+    }
+    if ((type === 'win_back' || type === 'pct_off') && p.pct < 5) continue;
+    const o = makeOffer(c, type, p, R);
+    o.reason = 'Rule-based default for this segment.';
+    if (!failed(checkOffer(c, o, R, spent)).length) return o;
+  }
+  return null;
+}
+
+/* "One offer per segment" baseline: the usual rule-based playbook, the same offer for everyone in a segment. */
+const PLAYBOOK = {
+  champions: ['early_access', {}], loyal: ['double_points', {}], new: ['welcome', { flat: 100, minOrder: 499 }],
+  attention: ['pct_off', { pct: 10 }], at_risk: ['pct_off', { pct: 15 }], lost: ['win_back', { pct: 15 }], bargain: ['flat_off', { flat: 100, minOrder: 999 }],
+};
+function playbookOffer(c, R, spent) {
+  const [type, p] = PLAYBOOK[c.seg];
+  const allowed = allowedOffers(c, R);
+  if (allowed.includes(type)) {
+    const o = makeOffer(c, type, { ...p, sendHour: isQuiet(c.activeHour, R) ? (R.quietFrom - 1 >= R.quietTo ? R.quietFrom - 1 : R.quietTo) : c.activeHour }, R);
+    if (!failed(checkOffer(c, o, R, spent)).length) return o;
+  }
+  return ruleDefault(c, allowed, R, spent);
+}
+
+/* ---------- 10. Run a campaign ---------- */
+const priorityOf = c => (c.m365 || c.aov) * (.3 + (c.churn || .3)) + (c.cart ? c.cart.value : 0) + c.ptsExp;
+const inHoldout = (c, R) => unit(c.id + 'holdout') * 100 < R.holdoutPct;
+function runCampaign(R) {
+  const decisions = [];
+  let spent = 0;
+  const order = [...CUSTOMERS].sort((a, b) => priorityOf(b) - priorityOf(a));
+  for (const c of order) {
+    const d = { c, outcome: null, pre: checkCustomer(c, R), first: null, firstChecks: [], fixes: [], final: null, finalChecks: [], shadow: null };
+    const preFail = failed(d.pre);
+    const allowed = allowedOffers(c, R);
+    if (preFail.length) { d.outcome = 'blocked'; d.why = preFail[0].id; }
+    else if (!allowed.length) { d.outcome = 'blocked'; d.why = 'none'; }
+    else if (inHoldout(c, R)) {
+      d.outcome = 'holdout';
+      d.shadow = ruleShadow(c, allowed, R);
+    } else {
+      d.first = aiPick(c, allowed, R);
+      d.firstChecks = checkOffer(c, d.first, R, spent);
+      if (!failed(d.firstChecks).length) { d.outcome = 'sent'; d.final = d.first; d.finalChecks = d.firstChecks; }
+      else {
+        const { offer, fixes } = aiRetry(c, d.first, failed(d.firstChecks), allowed, R, spent);
+        const checks = checkOffer(c, offer, R, spent);
+        d.fixes = fixes;
+        if (!failed(checks).length) { d.outcome = 'fixed'; d.final = offer; d.finalChecks = checks; }
+        else {
+          const fb = ruleDefault(c, allowed, R, spent);
+          if (fb) { d.outcome = 'fallback'; d.final = fb; d.finalChecks = checkOffer(c, fb, R, spent); d.retryChecks = checks; }
+          else { d.outcome = failed(checks).some(x => x.id === 'budget') ? 'budget' : 'blocked'; d.why = failed(checks)[0].id; d.retryChecks = checks; }
+        }
+      }
+      if (d.final) spent += d.final.cost;
+    }
+    decisions.push(d);
+  }
+  return { decisions, spent, rules: structuredClone(R), at: new Date() };
+}
+// What a holdout customer would have received (used only to compare strategies, never sent).
+function ruleShadow(c, allowed, R) {
+  const o = aiPick(c, allowed, R);
+  const bad = failed(checkOffer(c, o, R, 0));
+  if (!bad.length) return o;
+  const r = aiRetry(c, o, bad, allowed, R, 0).offer;
+  return failed(checkOffer(c, r, R, 0)).length ? ruleDefault(c, allowed, R, 0) : r;
+}
+
+/* ---------- 11. Response simulation (uses the hidden personas) ---------- */
+function buyProb(c, o) {
+  const P = PERSONAS[c._persona];
+  let base = P.base * (c._persona === 'festive_only' ? 1.6 : 1) * 1.1 + (c.cart ? .08 : 0);   // Diwali is close
+  base = Math.min(.9, base);
+  if (!o) return base;
+  let e = 0;
+  const big = o.minOrder > c.aov * 1.6 ? .5 : 1;
+  switch (o.type) {
+    case 'pct_off': case 'win_back': e = P.sDisc * o.pct / 20; break;
+    case 'flat_off': case 'welcome': e = P.sDisc * (o.flat / o.eff) * 5 * big; break;
+    case 'free_delivery': e = P.sDeliv * (c.tier === 3 ? 1.3 : 1) * (c.aov < 900 ? 1.2 : 1) * big; break;
+    case 'double_points': e = P.sPoints; break;
+    case 'points_reminder': e = P.sPoints * Math.min(1.5, o.pts / 200); break;
+    case 'early_access': e = P.sPerk; break;
+    case 'cart_reminder': e = .35 + P.sDisc * o.pct / 20; break;
+  }
+  if (o.cat && !c.topCats.slice(0, 2).includes(o.cat)) e *= .6;
+  if (o.lang !== c.lang) e *= .7;
+  return Math.min(.95, base + (1 - base) * Math.min(.8, e * .45));
+}
+const optOutProb = (c, o, R) => o ? PERSONAS[c._persona].optRisk + (c.offersThisWeek >= 1 ? .01 : 0) + (isQuiet(o.sendHour, R) ? .03 : 0) : 0;
+function outcomeOf(c, o, R) {
+  const p = buyProb(c, o);
+  const basket = o ? (o.type === 'cart_reminder' ? c.cart.value : Math.max(c.aov, o.minOrder || 0)) : c.aov;
+  const m = o?.type === 'cart_reminder' ? c.cart.margin : c.blendMargin;
+  const cost = o ? o.cost : 0;
+  // A customer who was drifting away (or still new) and buys now is likely to keep buying: count ~1.5 future orders of margin.
+  const future = ['at_risk', 'lapsed', 'new_explorer'].includes(c._persona) ? c.aov * c.blendMargin * 1.5 : 0;
+  return { p, rev: basket, profit: basket * m - cost + future, cost, opt: optOutProb(c, o, R) };
+}
+function totals(assign, R) {
+  const t = { n: 0, orders: 0, rev: 0, profit: 0, cost: 0, opt: 0 };
+  for (const [c, o] of assign) { const x = outcomeOf(c, o, R); t.n++; t.orders += x.p; t.rev += x.p * x.rev; t.profit += x.p * x.profit; t.cost += x.p * x.cost; t.opt += x.opt; }
+  return t;
+}
+function evaluate(run) {
+  const R = run.rules;
+  const D = run.decisions;
+  const T = D.filter(d => d.final), H = D.filter(d => d.outcome === 'holdout');
+  // Expected (true) effect for the customers we sent offers to.
+  const withO = totals(T.map(d => [d.c, d.final]), R), without = totals(T.map(d => [d.c, null]), R);
+  // What one fortnight's treatment-vs-holdout measurement would show, repeated 200 times.
+  const sims = [];
+  for (let r = 0; r < 200; r++) {
+    const g = mulberry32(9000 + r);
+    let bT = 0, revT = 0, bH = 0, revH = 0;
+    for (const d of T) { const x = outcomeOf(d.c, d.final, R); if (g() < x.p) { bT++; revT += x.rev; } }
+    for (const d of H) { const x = outcomeOf(d.c, null, R); if (g() < x.p) { bH++; revH += x.rev; } }
+    sims.push({ conv: bT / T.length - bH / Math.max(1, H.length), cT: bT / T.length, cH: bH / Math.max(1, H.length), inc: (revT / T.length - revH / Math.max(1, H.length)) * T.length });
+  }
+  const q = (arr, k) => { const s = [...arr].sort((a, b) => a - b); return s[Math.floor(k * (s.length - 1))]; };
+  const measured = {
+    upLo: q(sims.map(s => s.conv), .05), upHi: q(sims.map(s => s.conv), .95), up: q(sims.map(s => s.conv), .5),
+    cT: q(sims.map(s => s.cT), .5), cH: q(sims.map(s => s.cH), .5),
+  };
+  // Strategy comparison on every customer who passed the customer rules (including holdout).
+  const E = D.filter(d => ['sent', 'fixed', 'fallback', 'holdout', 'budget'].includes(d.outcome));
+  const none = totals(E.map(d => [d.c, null]), R);
+  const blanketOffer = c => makeOffer(c, 'pct_off', { pct: 20, cat: c.topCats[0] || 'fashion' }, { ...R, expiryDays: 7 });
+  let spentRules = 0;
+  const rulesAssign = E.map(d => { const o = playbookOffer(d.c, R, spentRules); if (o) spentRules += o.cost; return [d.c, o]; });
+  const strategies = [
+    { key: 'blanket', label: '20% off for everyone', t: totals(E.map(d => [d.c, blanketOffer(d.c)]), R) },
+    { key: 'rules', label: 'One offer per segment', t: totals(rulesAssign, R) },
+    { key: 'ai', label: 'AI within rules', t: totals(E.map(d => [d.c, d.final || d.shadow]), R) },
+  ].map(s => ({ ...s, dOrders: s.t.orders - none.orders, dRev: s.t.rev - none.rev, dProfit: s.t.profit - none.profit, cost: s.t.cost, opt: s.t.opt }));
+  // Uplift groups from the hidden truth: who should get a discount at all?
+  const groups = { sure: [], persuadable: [], dnd: [], lost: [] };
+  for (const d of E) {
+    const c = d.c, base = buyProb(c, null), u = buyProb(c, makeOffer(c, 'pct_off', { pct: 15, cat: c.topCats[0] || 'fashion' }, R)) - base;
+    const g = base >= .35 && u < .07 ? 'sure' : PERSONAS[c._persona].optRisk >= .04 && u < .1 ? 'dnd' : u >= .07 ? 'persuadable' : 'lost';
+    groups[g].push(d);
+  }
+  const spendOn = (list, pick) => list.reduce((s, d) => { const o = pick(d); return s + (o ? outcomeOf(d.c, o, R).p * o.cost : 0); }, 0);
+  const groupRows = Object.entries(groups).map(([k, list]) => ({
+    k, n: list.length,
+    ai: spendOn(list, d => d.final || d.shadow),
+    blanket: spendOn(list, d => blanketOffer(d.c)),
+  }));
+  // By segment (expected, AI vs blanket).
+  const bySeg = SEG_KEYS.map(s => {
+    const list = E.filter(d => d.c.seg === s);
+    const n0 = totals(list.map(d => [d.c, null]), R), ai = totals(list.map(d => [d.c, d.final || d.shadow]), R), bl = totals(list.map(d => [d.c, blanketOffer(d.c)]), R);
+    return { s, n: list.length, base: list.length ? n0.orders / list.length : 0, aiConv: list.length ? ai.orders / list.length : 0, aiProfit: ai.profit - n0.profit, blProfit: bl.profit - n0.profit };
+  }).filter(r => r.n);
+  return { T, H, withO, without, measured, strategies, groupRows, bySeg, none };
+}
+
+/* ---------- Formatting helpers ---------- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const inr = n => (n < 0 ? '−' : '') + '₹' + Math.round(Math.abs(n)).toLocaleString('en-IN');
+const num = n => Math.round(n).toLocaleString('en-IN');
+const pct = (x, dp = 0) => `${(x * 100).toFixed(dp)}%`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const ago = d => d == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
+const hourLabel = h => { const hh = ((h % 24) + 24) % 24; return `${hh % 12 || 12} ${hh < 12 ? 'am' : 'pm'}`; };
+
+/* =====================================================================
+   Screens
+   ===================================================================== */
+const CUSTOMERS = generateData(1500).map(addFeatures);
+const BY_ID = Object.fromEntries(CUSTOMERS.map(c => [c.id, c]));
+const STATS = computeStats();
+const state = {
+  screen: 'overview', lastScreen: null, rules: loadRules(), run: null, ev: null, rulesChanged: false,
+  q: '', seg: 'all', sort: 'value', page: 0, runFilter: 'all', runPage: 0,
+  tg: { id: null, lang: null, chat: [], q: '' },
+};
+
+const OUTCOMES = {
+  sent:     { label: 'Sent',              chip: 'bg-emerald-100 text-emerald-800', help: 'The AI pick passed every rule first time.' },
+  fixed:    { label: 'Fixed, then sent',  chip: 'bg-amber-100 text-amber-800',     help: 'The AI pick broke a rule, was fixed and checked again.' },
+  fallback: { label: 'Safe default sent', chip: 'bg-sky-100 text-sky-800',         help: 'The AI could not fix it, so a rule-based offer went instead.' },
+  holdout:  { label: 'Holdout',           chip: 'bg-slate-200 text-slate-700',     help: 'Kept out on purpose so we can measure the effect.' },
+  blocked:  { label: 'Not sent',          chip: 'bg-rose-100 text-rose-800',       help: 'A rule says this customer should not get an offer now.' },
+  budget:   { label: 'Budget used up',    chip: 'bg-rose-100 text-rose-800',       help: 'The campaign budget ran out before this customer.' },
+};
+const SENT = ['sent', 'fixed', 'fallback'];
+
+function computeStats() {
+  const C = CUSTOMERS;
+  const orders = C.flatMap(c => c.orders);
+  const sum = a => a.reduce((s, x) => s + x, 0);
+  const months = [];
+  for (let i = 17; i >= 0; i--) { const dt = new Date(2026, 9 - i, 1); months.push({ y: dt.getFullYear(), m: dt.getMonth(), label: `${MONTHS.en[dt.getMonth()]} ${String(dt.getFullYear()).slice(2)}`, rev: 0, orders: 0 }); }
+  const domOrders = Array(32).fill(0), domDays = Array(32).fill(0), wk = [0, 0], wkDays = [0, 0];
+  for (let d = 0; d < 540; d++) { const dt = dateAgo(d); domDays[dt.getDate()]++; wkDays[dt.getDay() % 6 === 0 ? 1 : 0]++; }
+  for (const o of orders) {
+    const dt = dateAgo(o.d);
+    const mo = months.find(x => x.y === dt.getFullYear() && x.m === dt.getMonth());
+    if (mo) { mo.rev += o.value; mo.orders++; }
+    if (o.d < 540) { domOrders[dt.getDate()]++; wk[dt.getDay() % 6 === 0 ? 1 : 0]++; }
+  }
+  const perDom = domOrders.map((n, i) => i ? n / Math.max(1, domDays[i]) : 0);
+  const salaryLift = (sum(perDom.slice(1, 6)) / 5) / (sum(perDom.slice(6)) / 26);
+  const weekendLift = (wk[1] / wkDays[1]) / (wk[0] / wkDays[0]);
+  const spends = C.map(c => c.spendAll).sort((a, b) => b - a);
+  const top20 = sum(spends.slice(0, Math.round(C.length * .2))) / sum(spends);
+  const o90 = orders.filter(o => o.d <= 90);
+  const abandon = sum(C.map(c => c.abandoned90)) / (sum(C.map(c => c.abandoned90)) + o90.length);
+  const fullMonths = months.slice(0, -1);
+  const oct25 = months.find(x => x.y === 2025 && x.m === 9);
+  const festLift = oct25.rev / (sum(fullMonths.map(x => x.rev)) / fullMonths.length);
+  const codBy = [1, 2, 3].map(t => { const os = C.filter(c => c.tier === t).flatMap(c => c.orders); return os.filter(o => o.pay === 'COD').length / os.length; });
+  const retBy = CAT_KEYS.map(k => { const os = orders.filter(o => o.cat === k); return [k, os.filter(o => o.ret).length / os.length]; }).sort((a, b) => b[1] - a[1]);
+  const vals = orders.map(o => o.value);
+  const skew = (sum(vals) / vals.length) / median(vals);
+  const never = C.filter(c => c.total === 0).length / C.length;
+  const seg = Object.fromEntries(SEG_KEYS.map(s => [s, { n: 0, m365: 0, rec: [] }]));
+  for (const c of C) { seg[c.seg].n++; seg[c.seg].m365 += c.m365; if (c.recency != null) seg[c.seg].rec.push(c.recency); }
+  const m365All = sum(C.map(c => c.m365));
+  const atRisk = C.filter(c => c.seg === 'at_risk');
+  const carts = C.filter(c => c.cart);
+  return {
+    months, perDom, salaryLift, weekendLift, top20, abandon, festLift, codBy, retBy, skew, never, seg, m365All,
+    nOrders: orders.length, active90: C.filter(c => c.recency != null && c.recency <= 90).length,
+    rev90: sum(o90.map(o => o.value)), orders90: o90.length,
+    atRisk: { n: atRisk.length, spend: sum(atRisk.map(c => c.spendAll)) },
+    carts: { n: carts.length, value: sum(carts.map(c => c.cart.value)) },
+    pts: { n: C.filter(c => c.ptsExp >= 50).length, value: sum(C.map(c => c.ptsExp)) },
+  };
+}
+
+/* ---------- Small building blocks ---------- */
+const card = (inner, cls = '') => `<section class="min-w-0 bg-white rounded-2xl border border-slate-200 p-4 md:p-5 ${cls}">${inner}</section>`;
+const h2 = (t, sub = '') => `<h2 class="font-semibold text-slate-900">${t}</h2>${sub ? `<p class="text-sm text-slate-500 mt-0.5">${sub}</p>` : ''}`;
+const kpi = (label, value, sub = '', extra = '') => `<div class="bg-white rounded-2xl border border-slate-200 p-4 ${extra}"><div class="text-sm text-slate-500">${label}</div><div class="text-2xl font-bold mt-1 tabular-nums">${value}</div><div class="text-xs text-slate-500 mt-1">${sub}</div></div>`;
+const segChip = s => `<span class="inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${SEGMENTS[s].chip}">${SEGMENTS[s].label}</span>`;
+const outChip = o => `<span class="inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${OUTCOMES[o].chip}">${OUTCOMES[o].label}</span>`;
+const btn = (label, onclick, kind = 'primary', extra = '') => {
+  const k = { primary: 'bg-violet-600 hover:bg-violet-700 text-white', ghost: 'bg-white hover:bg-slate-50 border border-slate-300 text-slate-700', soft: 'bg-violet-50 hover:bg-violet-100 text-violet-700' }[kind];
+  return `<button type="button" onclick="${onclick}" class="rounded-xl px-3.5 py-2 text-sm font-medium transition ${k} ${extra}">${label}</button>`;
+};
+function describeOffer(o) {
+  switch (o.type) {
+    case 'pct_off': return `${o.pct}% off ${CATS[o.cat].name}`;
+    case 'win_back': return `${o.pct}% off next order`;
+    case 'flat_off': case 'welcome': return `₹${o.flat} off above ₹${o.minOrder}`;
+    case 'free_delivery': return `Free delivery${o.minOrder ? ` above ₹${o.minOrder}` : ''}`;
+    case 'double_points': return '2× points on next order';
+    case 'points_reminder': return `Reminder: ${o.pts} points expiring`;
+    case 'cart_reminder': return `Cart reminder${o.pct ? ` + ${o.pct}% off` : ''}`;
+    case 'early_access': return 'Early access to Diwali sale';
+  }
+}
+const offerChip = o => `<span class="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">${OFFERS[o.type].icon} ${esc(describeOffer(o))}</span>`;
+const sendLabel = o => `${o.sendDay ? 'Tomorrow' : 'Today'}, ${hourLabel(o.sendHour)}`;
+const riskLabel = r => r == null ? '–' : r >= .6 ? 'High' : r >= .3 ? 'Medium' : 'Low';
+const riskBar = r => r == null ? '<span class="text-slate-400">–</span>' : `<div class="flex items-center gap-2"><div class="h-1.5 w-14 rounded-full bg-slate-100"><div class="h-1.5 rounded-full ${r >= .6 ? 'bg-orange-500' : r >= .3 ? 'bg-amber-400' : 'bg-emerald-500'}" style="width:${Math.max(6, r * 100)}%"></div></div><span class="text-xs text-slate-600">${riskLabel(r)}</span></div>`;
+function pageHead(title, sub, right = '') {
+  return `<div class="text-xs text-slate-500 mb-2 flex flex-wrap gap-x-3 gap-y-1"><span>BazaarKart demo</span><span>·</span><span>${num(CUSTOMERS.length)} synthetic customers</span><span>·</span><span>Sat 24 Oct 2026</span><span>·</span><span>🪔 Diwali in ${DAYS_TO_DIWALI} days</span></div>
+  <div class="flex flex-wrap items-end justify-between gap-3 mb-5"><div><h1 class="text-2xl font-bold tracking-tight">${title}</h1><p class="text-slate-600 mt-1 max-w-3xl">${sub}</p></div><div class="flex flex-wrap items-center gap-2">${right}</div></div>`;
+}
+function pager(total, page, size, fn) {
+  const pages = Math.ceil(total / size);
+  if (pages <= 1) return '';
+  return `<div class="flex items-center justify-between gap-2 pt-3 text-sm text-slate-600"><span>${num(page * size + 1)}–${num(Math.min(total, (page + 1) * size))} of ${num(total)}</span><div class="flex gap-2">
+    ${btn('Previous', `${fn}(${page - 1})`, 'ghost', page === 0 ? 'opacity-40 pointer-events-none' : '')}${btn('Next', `${fn}(${page + 1})`, 'ghost', page >= pages - 1 ? 'opacity-40 pointer-events-none' : '')}</div></div>`;
+}
+const checkList = checks => `<ul class="divide-y divide-slate-100">${checks.map(x => `<li class="py-1.5 flex gap-2 text-sm"><span class="${x.ok ? 'text-emerald-600' : 'text-rose-600'} font-bold w-4 shrink-0">${x.ok ? '✓' : '✗'}</span><div><div class="font-medium">${CHECKS[x.id].label}</div><div class="text-slate-500 text-xs">${esc(x.detail)}</div></div></li>`).join('')}</ul>`;
+
+/* ---------- Charts ---------- */
+let CHARTS = [];
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function clearCharts() { CHARTS.forEach(ch => ch.destroy()); CHARTS = []; }
+function barChart(id, labels, datasets, { yFmt = v => v, tip = null, legend = false } = {}) {
+  const el = document.getElementById(id);
+  if (!el || typeof Chart === 'undefined') return;
+  CHARTS.push(new Chart(el, {
+    type: 'bar',
+    data: { labels, datasets: datasets.map(ds => ({ borderRadius: 4, maxBarThickness: 32, borderSkipped: 'start', ...ds })) },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: legend, position: 'top', align: 'start', labels: { boxWidth: 12, boxHeight: 12, usePointStyle: true, pointStyle: 'rectRounded', color: css('--ink-2') } },
+                 tooltip: { callbacks: tip ? { label: tip } : {} } },
+      scales: { x: { grid: { display: false }, ticks: { color: css('--ink-2'), autoSkip: true, maxRotation: 0 } },
+                y: { grid: { color: css('--grid') }, border: { display: false }, ticks: { color: css('--ink-2'), callback: yFmt } } },
+    },
+  }));
+}
+const lakh = v => Math.abs(v) >= 1e5 ? `₹${(v / 1e5).toFixed(Math.abs(v) >= 1e6 ? 0 : 1)}L` : `₹${Math.round(v / 1000)}k`;
+
+/* ---------- Overview ---------- */
+function viewOverview() {
+  const S = STATS;
+  const checks = [
+    ['Top 20% of customers bring this share of revenue', pct(S.top20), '60–80%', S.top20 >= .6 && S.top20 <= .8],
+    ['Carts left without buying (last 90 days)', pct(S.abandon), '65–80%', S.abandon >= .65 && S.abandon <= .8],
+    ['Festive month (Oct 2025) revenue vs an average month', `${S.festLift.toFixed(1)}×`, 'at least 1.5×', S.festLift >= 1.5],
+    ['Orders per day on salary days (1st–5th) vs other days', `${S.salaryLift.toFixed(2)}×`, 'above 1.1×', S.salaryLift > 1.1],
+    ['Orders per day at weekends vs weekdays', `${S.weekendLift.toFixed(2)}×`, 'above 1.1×', S.weekendLift > 1.1],
+    ['Cash on delivery: small cities vs big cities', `${pct(S.codBy[2])} vs ${pct(S.codBy[0])}`, 'higher in small cities', S.codBy[2] > S.codBy[0]],
+    ['Category with the most returns', `${CATS[S.retBy[0][0]].name} (${pct(S.retBy[0][1])})`, 'Fashion', S.retBy[0][0] === 'fashion'],
+    ['Average order vs typical (median) order', `${S.skew.toFixed(2)}×`, 'above 1.15× (a few big orders)', S.skew > 1.15],
+    ['Signed up but never ordered', pct(S.never), '5–25%', S.never >= .05 && S.never <= .25],
+  ];
+  const segRows = SEG_KEYS.map(s => { const x = S.seg[s]; return `<tr class="border-t border-slate-100">
+      <td class="py-2.5 pr-3">${segChip(s)}</td><td class="py-2.5 pr-3 tabular-nums text-right">${num(x.n)}</td>
+      <td class="py-2.5 pr-3"><div class="flex items-center gap-2"><div class="h-1.5 w-20 rounded-full bg-slate-100"><div class="h-1.5 rounded-full" style="background:var(--series-1);width:${Math.max(2, x.m365 / S.m365All * 100)}%"></div></div><span class="tabular-nums text-xs">${pct(x.m365 / S.m365All)}</span></div></td>
+      <td class="py-2.5 pr-3 tabular-nums text-right whitespace-nowrap">${x.rec.length ? `${Math.round(median(x.rec))} days` : '–'}</td>
+      <td class="py-2.5 text-slate-600 min-w-[16rem]">${SEGMENTS[s].play}</td></tr>`; }).join('');
+  return `${pageHead('Overview', 'How BazaarKart customers shop, and where an offer can actually change what they do.', btn('See the customers', "go('customers')", 'ghost') + btn('Run offers', "go('run')"))}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    ${kpi('Customers', num(CUSTOMERS.length), `${num(S.active90)} bought in the last 90 days`)}
+    ${kpi('Revenue, last 90 days', inr(S.rev90), `${num(S.orders90)} orders · average ${inr(S.rev90 / S.orders90)}`)}
+    ${kpi('At risk of leaving', num(S.atRisk.n), `they have spent ${inr(S.atRisk.spend)} with us`)}
+    ${kpi('Open carts', num(S.carts.n), `${inr(S.carts.value)} waiting to be bought`)}
+  </div>
+  <div class="grid lg:grid-cols-5 gap-4 mt-4">
+    ${card(`${h2('Revenue by month', 'Last 18 months. The 2025 festive sale and Diwali (20 Oct) is the biggest month; Oct 2026 is the month so far.')}<div class="h-64 mt-3"><canvas id="chMonthly" aria-label="Revenue by month bar chart"></canvas></div>`, 'lg:col-span-3')}
+    ${card(`${h2('Orders per day, by date of the month', 'Salary days (1st–5th, dark bars) bring more orders.')}<div class="h-64 mt-3"><canvas id="chDom" aria-label="Orders per day by date of month bar chart"></canvas></div>`, 'lg:col-span-2')}
+  </div>
+  <div class="grid lg:grid-cols-5 gap-4 mt-4">
+    ${card(`${h2('Customer segments', 'Worked out from each customer\'s orders: how recently, how often, how much, and coupon use.')}
+      <div class="overflow-x-auto scroll-thin mt-2"><table class="w-full text-sm"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">Segment</th><th class="py-2 pr-3 font-medium text-right">Customers</th><th class="py-2 pr-3 font-medium">Share of 12-month revenue</th><th class="py-2 pr-3 font-medium text-right">Typical last order</th><th class="py-2 font-medium">What to do</th></tr></thead><tbody>${segRows}</tbody></table></div>`, 'lg:col-span-3')}
+    ${card(`${h2('Does the data behave like real shoppers?', `Checks on ${num(S.nOrders)} synthetic orders against patterns seen on real Indian e-commerce sites.`)}
+      <ul class="mt-2 divide-y divide-slate-100">${checks.map(([l, v, t, ok]) => `<li class="py-2 flex items-start gap-2 text-sm"><span class="${ok ? 'text-emerald-600' : 'text-amber-600'} font-bold w-4 shrink-0">${ok ? '✓' : '!'}</span><div class="flex-1"><div>${l}</div><div class="text-xs text-slate-500">Expected ${t}</div></div><div class="font-semibold tabular-nums text-right">${v}</div></li>`).join('')}</ul>`, 'lg:col-span-2')}
+  </div>`;
+}
+function afterOverview() {
+  const S = STATS;
+  barChart('chMonthly', S.months.map(m => m.label), [{ label: 'Revenue', data: S.months.map(m => m.rev), backgroundColor: css('--series-1') }],
+    { yFmt: lakh, tip: ctx => ` Revenue ${inr(ctx.raw)} · ${num(S.months[ctx.dataIndex].orders)} orders` });
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  barChart('chDom', days, [{ label: 'Orders per day', data: days.map(d => +S.perDom[d].toFixed(1)), backgroundColor: days.map(d => d <= 5 ? css('--series-1') : css('--series-1-soft')) }],
+    { tip: ctx => ` ${ctx.raw} orders per day on date ${ctx.label}` });
+}
+
+/* ---------- Customers ---------- */
+function filteredCustomers() {
+  const q = state.q.trim().toLowerCase();
+  let list = CUSTOMERS.filter(c => (state.seg === 'all' || c.seg === state.seg) && (!q || c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q) || c.id.toLowerCase().includes(q)));
+  const by = { value: (a, b) => b.m365 - a.m365, risk: (a, b) => (b.churn ?? -1) - (a.churn ?? -1), recent: (a, b) => (a.recency ?? 1e9) - (b.recency ?? 1e9), cart: (a, b) => (b.cart?.value || 0) - (a.cart?.value || 0) }[state.sort];
+  return list.sort(by);
+}
+function custTable() {
+  const list = filteredCustomers(), size = 25, page = Math.min(state.page, Math.max(0, Math.ceil(list.length / size) - 1));
+  const rows = list.slice(page * size, page * size + size).map(c => `<tr class="border-t border-slate-100 hover:bg-violet-50/50 cursor-pointer" onclick="openCustomer('${c.id}')">
+    <td class="py-2.5 pr-3"><div class="font-medium">${esc(c.name)}</div><div class="text-xs text-slate-500">${esc(c.city)} · ${LANGS[c.lang]}</div></td>
+    <td class="py-2.5 pr-3">${segChip(c.seg)}</td>
+    <td class="py-2.5 pr-3 whitespace-nowrap">${ago(c.recency)}</td>
+    <td class="py-2.5 pr-3 text-right tabular-nums">${c.f365}</td>
+    <td class="py-2.5 pr-3 text-right tabular-nums">${inr(c.m365)}</td>
+    <td class="py-2.5 pr-3">${riskBar(c.churn)}</td>
+    <td class="py-2.5 pr-3 text-right tabular-nums">${c.discAff == null ? '–' : pct(c.discAff)}</td>
+    <td class="py-2.5 pr-3 whitespace-nowrap">${c.cart ? `🛒 ${inr(c.cart.value)}` : '<span class="text-slate-400">–</span>'}</td>
+    <td class="py-2.5 text-right tabular-nums">${num(c.points)}${c.ptsExp >= 50 ? ' <span title="Some points expire within 30 days">⏳</span>' : ''}</td></tr>`).join('');
+  return `<div class="overflow-x-auto scroll-thin"><table class="w-full text-sm min-w-[860px]"><thead><tr class="text-left text-xs text-slate-500">
+    <th class="py-2 pr-3 font-medium">Customer</th><th class="py-2 pr-3 font-medium">Segment</th><th class="py-2 pr-3 font-medium">Last order</th><th class="py-2 pr-3 font-medium text-right">Orders (12 mo)</th><th class="py-2 pr-3 font-medium text-right">Spend (12 mo)</th><th class="py-2 pr-3 font-medium">Risk of leaving</th><th class="py-2 pr-3 font-medium text-right">Coupon use</th><th class="py-2 pr-3 font-medium">Open cart</th><th class="py-2 font-medium text-right">Points</th>
+    </tr></thead><tbody>${rows || '<tr><td colspan="9" class="py-8 text-center text-slate-500">No customers match.</td></tr>'}</tbody></table></div>${pager(list.length, page, size, 'custPage')}`;
+}
+function viewCustomers() {
+  const counts = Object.fromEntries(SEG_KEYS.map(s => [s, STATS.seg[s].n]));
+  const chip = (k, label, n) => `<button type="button" onclick="setSeg('${k}')" class="rounded-full px-3 py-1 text-sm border ${state.seg === k ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}">${label} <span class="opacity-70 tabular-nums">${num(n)}</span></button>`;
+  return `${pageHead('Customers', 'Every synthetic shopper with what the engine knows about them. Click a row to see their history.')}
+  ${card(`<div class="flex flex-wrap gap-2 items-center">
+      <input type="search" value="${esc(state.q)}" oninput="state.q=this.value;state.page=0;document.getElementById('custTable').innerHTML=custTable()" placeholder="Search name, city or ID" class="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+      <label class="text-sm text-slate-600 flex items-center gap-2">Sort by
+        <select onchange="state.sort=this.value;state.page=0;document.getElementById('custTable').innerHTML=custTable()" class="rounded-xl border border-slate-300 px-2 py-2 text-sm">
+          ${[['value', 'Spend (12 months)'], ['risk', 'Risk of leaving'], ['recent', 'Most recent order'], ['cart', 'Open cart value']].map(([v, l]) => `<option value="${v}" ${state.sort === v ? 'selected' : ''}>${l}</option>`).join('')}
+        </select></label>
+    </div>
+    <div class="flex flex-wrap gap-2 mt-3">${chip('all', 'All', CUSTOMERS.length)}${SEG_KEYS.map(s => chip(s, SEGMENTS[s].label, counts[s])).join('')}</div>
+    <div id="custTable" class="mt-3">${custTable()}</div>`)}`;
+}
+function setSeg(s) { state.seg = s; state.page = 0; render(); }
+function custPage(p) { state.page = p; document.getElementById('custTable').innerHTML = custTable(); }
+
+function openCustomer(id) {
+  const c = BY_ID[id];
+  const ev = [];
+  if (c.ptsExp >= 50) ev.push({ d: -1, icon: '⏳', text: `${c.ptsExp} points (₹${c.ptsExp}) expire within 30 days` });
+  if (c.cart) ev.push({ d: Math.floor(c.cart.hoursAgo / 24), icon: '🛒', text: `Left ${c.cart.items.map(x => x.name).join(', ')} (${inr(c.cart.value)}) in the cart, ${c.cart.hoursAgo < 24 ? `${c.cart.hoursAgo} hours ago` : `${Math.round(c.cart.hoursAgo / 24)} days ago`}` });
+  for (const b of c.browse) ev.push({ d: b.d, icon: '👀', text: `Looked at ${b.item} (${CATS[b.cat].name})` });
+  if (c.lastOfferAgo < 99) ev.push({ d: c.lastOfferAgo, icon: '✉️', text: 'Got an offer from an earlier campaign' });
+  for (const o of c.orders.slice(0, 8)) ev.push({ d: o.d, icon: o.ret ? '↩️' : '📦', text: `Bought ${CATS[o.cat].name} for ${inr(o.value)}${o.disc ? ' with a coupon' : ''} · ${o.pay}${o.ret ? ' · returned' : ''}` });
+  if (c.orders.length > 8) ev.push({ d: c.orders[8].d, icon: '…', text: `${c.orders.length - 8} earlier orders` });
+  ev.push({ d: c.signupAgo, icon: '🎉', text: 'Joined BazaarKart' });
+  ev.sort((a, b) => a.d - b.d);
+  const catTot = Object.values(c.catSpend).reduce((s, x) => s + x, 0);
+  const dec = state.run?.decisions.find(d => d.c.id === id);
+  const stat = (l, v) => `<div class="rounded-xl bg-slate-50 p-3"><div class="text-xs text-slate-500">${l}</div><div class="font-semibold tabular-nums mt-0.5">${v}</div></div>`;
+  openDrawer(`<div class="flex items-start justify-between gap-3">
+      <div><div class="text-xl font-bold">${esc(c.name)}</div><div class="text-sm text-slate-500 mt-0.5">${c.id} · ${c.age} · ${esc(c.city)} (tier ${c.tier} city) · reads ${LANGS[c.lang]}</div><div class="mt-2 flex flex-wrap gap-1.5">${segChip(c.seg)}${c.cart ? '<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs">🛒 Open cart</span>' : ''}${c.optedOut ? '<span class="rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-xs">Stopped offers</span>' : ''}</div></div>
+      ${btn('Close', 'closeDrawer()', 'ghost')}
+    </div>
+    <div class="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm"><span class="font-semibold">Why ${SEGMENTS[c.seg].label}:</span> ${esc(whySegment(c))}<div class="text-violet-800 mt-1">${SEGMENTS[c.seg].play}</div></div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+      ${stat('Last order', ago(c.recency))}${stat('Orders (12 mo)', c.f365)}${stat('Spend (12 mo)', inr(c.m365))}${stat('Average order', inr(c.aov))}
+      ${stat('Usually orders every', c.total >= 2 ? `${c.usualGap} days` : '–')}${stat('Risk of leaving', riskLabel(c.churn))}${stat('Coupon use', c.discAff == null ? '–' : pct(c.discAff))}${stat('Returns', c.total ? pct(c.returnRate) : '–')}
+      ${stat('Points', num(c.points))}${stat('Visits (30 days)', c.sessions30)}${stat('Usually online', hourLabel(c.activeHour))}${stat('Member for', `${c.signupAgo} days`)}
+    </div>
+    ${catTot ? `<h3 class="font-semibold mt-5 mb-2">Where they spend</h3><div class="space-y-1.5">${c.topCats.slice(0, 4).map(k => `<div class="flex items-center gap-2 text-sm"><span class="w-32 shrink-0">${CATS[k].name}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${c.catSpend[k] / catTot * 100}%"></div></div><span class="w-12 text-right tabular-nums text-xs">${pct(c.catSpend[k] / catTot)}</span></div>`).join('')}</div>` : ''}
+    ${dec ? `<h3 class="font-semibold mt-5 mb-2">In the last campaign run</h3><div class="rounded-xl border border-slate-200 p-3 text-sm flex flex-wrap items-center gap-2">${outChip(dec.outcome)}${dec.final ? offerChip(dec.final) : ''}<span class="text-slate-500">${esc(decisionWhy(dec))}</span><button type="button" class="ml-auto text-violet-700 font-medium hover:underline" onclick="openDecision('${c.id}')">See the decision →</button></div>` : ''}
+    <h3 class="font-semibold mt-5 mb-2">Timeline</h3>
+    <ol class="relative border-l border-slate-200 ml-2">${ev.slice(0, 16).map(e => `<li class="ml-4 pb-3"><span class="absolute -left-2.5 grid place-items-center w-5 h-5 rounded-full bg-white border border-slate-200 text-[11px]">${e.icon}</span><div class="text-xs text-slate-500">${e.d < 0 ? 'Coming up' : ago(e.d)}</div><div class="text-sm">${esc(e.text)}</div></li>`).join('')}</ol>`);
+}
+function openDrawer(html) {
+  document.getElementById('drawer').innerHTML = `<div class="fixed inset-0 z-40 bg-slate-900/30" onclick="closeDrawer()"></div>
+    <aside role="dialog" aria-modal="true" class="fixed right-0 top-0 h-full w-full max-w-2xl z-50 bg-white shadow-2xl overflow-y-auto scroll-thin p-5 md:p-6 fade-in">${html}</aside>`;
+}
+function closeDrawer() { document.getElementById('drawer').innerHTML = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+/* ---------- Rules ---------- */
+function ruleImpact(key) {
+  const R = state.rules, C = CUSTOMERS, run = state.run;
+  const lastRun = id => { if (!run) return ''; const n = run.decisions.filter(d => d.firstChecks.some(x => x.id === id && !x.ok)).length; return ` Last run: ${n ? `${plural(n, 'AI pick')} broke this and ${n === 1 ? 'was' : 'were'} fixed before sending.` : 'no AI pick broke this.'}`; };
+  const count = f => num(C.filter(f).length);
+  switch (key) {
+    case 'maxPct': return 'The AI can never offer more than this on % discounts.' + lastRun('discount');
+    case 'maxFlat': return 'Biggest flat discount in rupees (flat ₹ off and welcome offers).';
+    case 'cartMaxPct': return 'Cart reminders work without a discount; this caps the optional small discount.';
+    case 'welcomeFlat': return 'Rupees off the second order for new customers.';
+    case 'marginFloor': return 'So the most % off each category can take is: ' + CAT_KEYS.map(k => `${CATS[k].name} ${maxPctByMargin(CATS[k].margin, R)}%`).join(' · ') + '.' + lastRun('margin');
+    case 'budget': { if (!run) return 'Every offer counts at full cost, as if every customer uses it, so you never overspend.'; const missed = run.decisions.filter(d => d.outcome === 'budget').length; return `Last run committed ${inr(run.spent)} across ${num(run.decisions.filter(d => d.final).length)} offers${missed ? `; ${num(missed)} customers missed out when it ran out` : ''}. Every offer counts at full cost, as if all are used.`; }
+    case 'maxPerWeek': return `${count(c => c.offersThisWeek >= R.maxPerWeek)} customers already got ${plural(R.maxPerWeek, 'offer')} this week and will be skipped.`;
+    case 'minGapDays': return `${count(c => c.lastOfferAgo < R.minGapDays)} customers got an offer in the last ${plural(R.minGapDays, 'day')} and will be skipped.`;
+    case 'skipRecentDays': return `${count(c => c.recency != null && c.recency < R.skipRecentDays)} customers bought in the last ${plural(R.skipRecentDays, 'day')}; they don't need a nudge.`;
+    case 'maxReturnPct': return `${count(c => c.total >= 3 && c.returnRate * 100 > R.maxReturnPct)} customers return more than ${R.maxReturnPct}% of their orders and will be skipped.`;
+    case 'holdoutPct': return `About ${count(c => inHoldout(c, R))} customers get nothing on purpose, so you can see what the offers really add.`;
+    case 'quiet': return `${count(c => isQuiet(c.activeHour, R))} customers are usually online during these hours; their messages are moved to the evening before.` + lastRun('quiet');
+    case 'expiryDays': return 'Offers must end within this many days (and at least 2).' + lastRun('expiry');
+    case 'maxChars': return 'Long messages get cut off on phones.' + lastRun('length');
+  }
+  return '';
+}
+function slider(key, sentence, min, max, step, fmt = v => v) {
+  const v = state.rules[key];
+  return `<div class="py-3 border-b border-slate-100 last:border-0">
+    <div class="flex items-center justify-between gap-3"><label for="r-${key}" class="text-sm font-medium">${sentence}</label><span id="rv-${key}" class="font-semibold tabular-nums text-violet-700 whitespace-nowrap">${fmt(v)}</span></div>
+    <input id="r-${key}" type="range" min="${min}" max="${max}" step="${step}" value="${v}" class="w-full mt-2" oninput="setRule('${key}', this.valueAsNumber, this)">
+    <p data-impact="${key}" class="text-xs text-slate-500 mt-1">${ruleImpact(key)}</p></div>`;
+}
+const FMTS = { pct: v => `${v}%`, rs: v => `₹${num(v)}`, days: v => plural(v, 'day'), n: v => String(v), chars: v => `${v} characters` };
+const RULE_FMT = { maxPct: 'pct', maxFlat: 'rs', cartMaxPct: 'pct', welcomeFlat: 'rs', marginFloor: 'pct', budget: 'rs', maxPerWeek: 'n', minGapDays: 'days', skipRecentDays: 'days', maxReturnPct: 'pct', holdoutPct: 'pct', expiryDays: 'days', maxChars: 'chars' };
+function setRule(key, val) {
+  state.rules[key] = val;
+  saveRules(state.rules);
+  const v = document.getElementById('rv-' + key);
+  if (v && RULE_FMT[key]) v.textContent = FMTS[RULE_FMT[key]](val);
+  rulesTouched();
+}
+function rulesTouched() {
+  state.rulesChanged = true;
+  document.querySelectorAll('[data-impact]').forEach(el => { el.textContent = ruleImpact(el.dataset.impact); });
+  document.getElementById('rulesBanner')?.classList.remove('hidden');
+}
+function toggleGrid(seg, type, on) {
+  const list = new Set(state.rules.grid[seg]); on ? list.add(type) : list.delete(type);
+  state.rules.grid[seg] = OFFER_KEYS.filter(t => list.has(t));
+  saveRules(state.rules); rulesTouched();
+}
+function addBanned(input) { const w = input.value.trim().toLowerCase(); if (w && !state.rules.banned.includes(w)) { state.rules.banned.push(w); saveRules(state.rules); state.rulesChanged = true; render(); } }
+function removeBanned(i) { state.rules.banned.splice(i, 1); saveRules(state.rules); state.rulesChanged = true; render(); }
+function resetRules() { state.rules = structuredClone(DEFAULT_RULES); saveRules(state.rules); state.rulesChanged = true; render(); }
+function viewRules() {
+  const R = state.rules;
+  const s = (key, sentence, min, max, step) => slider(key, sentence, min, max, step, FMTS[RULE_FMT[key]]);
+  const hours = Array.from({ length: 24 }, (_, h) => h);
+  const hourSel = key => `<select onchange="state.rules.${key}=+this.value;saveRules(state.rules);rulesTouched()" class="rounded-lg border border-slate-300 px-2 py-1 text-sm">${hours.map(h => `<option value="${h}" ${R[key] === h ? 'selected' : ''}>${hourLabel(h)}</option>`).join('')}</select>`;
+  const grid = `<div class="overflow-x-auto scroll-thin"><table class="text-sm min-w-[760px] w-full"><thead><tr><th class="text-left py-2 pr-3 font-medium text-xs text-slate-500">Segment</th>${OFFER_KEYS.map(t => `<th class="py-2 px-1 font-medium text-xs text-slate-600 text-center w-20"><div class="text-base">${OFFERS[t].icon}</div>${OFFERS[t].short}</th>`).join('')}</tr></thead>
+    <tbody>${SEG_KEYS.map(sg => `<tr class="border-t border-slate-100"><td class="py-2 pr-3">${segChip(sg)}</td>${OFFER_KEYS.map(t => `<td class="text-center"><input type="checkbox" aria-label="${OFFERS[t].label} for ${SEGMENTS[sg].label}" class="w-4 h-4 accent-violet-600" ${R.grid[sg].includes(t) ? 'checked' : ''} onchange="toggleGrid('${sg}','${t}',this.checked)"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  return `${pageHead('Offer rules', 'These limits apply to every offer. The AI only chooses inside them, and every AI choice is checked against them again before it is sent.', btn('Reset to defaults', 'resetRules()', 'ghost') + btn('Run with these rules', "runNow();go('run')"))}
+  <div id="rulesBanner" class="${state.rulesChanged ? '' : 'hidden'} mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex flex-wrap items-center gap-3"><span>Rules changed. Run the campaign again to see the effect.</span>${btn('Run campaign', "runNow();go('run')", 'primary', 'ml-auto')}</div>
+  <div class="grid lg:grid-cols-2 gap-4">
+    ${card(`${h2('💰 Money limits')}${s('maxPct', 'Never give more than this % off', 0, 50, 5)}${s('maxFlat', 'Never give more than this flat ₹ off', 0, 1000, 50)}${s('marginFloor', 'Every offer must leave at least this much margin', 0, 30, 1)}${s('budget', 'Campaign budget', 25000, 500000, 5000)}`)}
+    ${card(`${h2('🔔 Don\'t over-message')}${s('maxPerWeek', 'At most this many offers per customer per week', 1, 5, 1)}${s('minGapDays', 'Wait at least this long between two offers', 0, 14, 1)}
+      <div class="py-3"><div class="text-sm font-medium flex flex-wrap items-center gap-2">No messages between ${hourSel('quietFrom')} and ${hourSel('quietTo')}</div><p data-impact="quiet" class="text-xs text-slate-500 mt-1">${ruleImpact('quiet')}</p></div>`)}
+    ${card(`${h2('🚫 Who to leave out')}
+      <div class="py-3 border-b border-slate-100 text-sm flex items-center gap-2"><input type="checkbox" checked disabled class="w-4 h-4"> Customers who tapped "Stop offers" <span class="text-xs text-slate-500">(always on)</span></div>
+      ${s('skipRecentDays', 'Skip customers who bought in the last', 0, 14, 1)}${s('maxReturnPct', 'Skip customers who return more than', 10, 100, 5)}`)}
+    ${card(`${h2('📏 Measure it', 'A holdout group gets nothing. Comparing them with everyone else shows what the offers really added.')}${s('holdoutPct', 'Keep this share of customers as a holdout', 0, 30, 1)}`)}
+    ${card(`${h2('✍️ Message rules')}${s('expiryDays', 'Offers last at most', 2, 30, 1)}
+      <label class="py-3 border-b border-slate-100 text-sm flex items-center gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 accent-violet-600" ${R.requireExpiry ? 'checked' : ''} onchange="state.rules.requireExpiry=this.checked;saveRules(state.rules);rulesTouched()"> Every message must show its expiry date</label>
+      ${s('maxChars', 'Keep messages under', 150, 600, 10)}
+      <div class="py-3"><div class="text-sm font-medium">Never use these words or phrases</div><div class="flex flex-wrap gap-1.5 mt-2">${R.banned.map((w, i) => `<span class="inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 text-xs">${esc(w)}<button type="button" aria-label="Remove ${esc(w)}" onclick="removeBanned(${i})" class="hover:text-rose-950">×</button></span>`).join('')}</div>
+      <input type="text" placeholder="Add a word and press Enter" onkeydown="if(event.key==='Enter')addBanned(this)" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm"><p data-impact="banned" class="text-xs text-slate-500 mt-1"></p></div>`)}
+    ${card(`${h2('🎁 Offer sizes')}${s('cartMaxPct', 'Cart reminders: at most this % off', 0, 15, 1)}${s('welcomeFlat', 'Welcome offer for new customers', 0, 300, 25)}`)}
+  </div>
+  ${card(`${h2('Who can get which offer', 'Tick the offers each segment may receive. The AI never sees the unticked ones.')}<div class="mt-3">${grid}</div>`, 'mt-4')}`;
+}
+
+/* ---------- Run offers ---------- */
+function runNow() { state.run = runCampaign(state.rules); state.ev = evaluate(state.run); state.rulesChanged = false; state.runPage = 0; }
+function decisionWhy(d) {
+  if (d.outcome === 'holdout') return 'Kept out on purpose to measure results.';
+  if (d.outcome === 'blocked' || d.outcome === 'budget') return d.why === 'none' ? 'No offer type is allowed for this customer right now.' : (d.pre.find(x => x.id === d.why && !x.ok) || d.retryChecks?.find(x => x.id === d.why) || {}).detail || CHECKS[d.why].short;
+  return d.final.reason;
+}
+function viewRun() {
+  const run = state.run, D = run.decisions;
+  const cnt = k => D.filter(d => d.outcome === k).length;
+  const blockedBy = {}, changedBy = {}, mix = {};
+  for (const d of D) {
+    if (d.outcome === 'blocked' || d.outcome === 'budget') { const k = d.why === 'none' ? 'No offer allowed for the segment' : CHECKS[d.why].short; blockedBy[k] = (blockedBy[k] || 0) + 1; }
+    if (d.outcome === 'fixed' || d.outcome === 'fallback') for (const x of failed(d.firstChecks)) changedBy[CHECKS[x.id].short] = (changedBy[CHECKS[x.id].short] || 0) + 1;
+    if (d.final) mix[d.final.type] = (mix[d.final.type] || 0) + 1;
+  }
+  const bars = (obj, color) => { const e = Object.entries(obj).sort((a, b) => b[1] - a[1]); const mx = Math.max(1, ...e.map(x => x[1])); return e.length ? e.map(([k, n]) => `<div class="flex items-center gap-2 text-sm py-1"><span class="w-56 shrink-0 truncate" title="${esc(k)}">${esc(k)}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:${color};width:${n / mx * 100}%"></div></div><span class="w-10 text-right tabular-nums">${num(n)}</span></div>`).join('') : '<p class="text-sm text-slate-500">None.</p>'; };
+  const list = D.filter(d => state.runFilter === 'all' || d.outcome === state.runFilter || (state.runFilter === 'notsent' && (d.outcome === 'blocked' || d.outcome === 'budget')));
+  const size = 25, page = Math.min(state.runPage, Math.max(0, Math.ceil(list.length / size) - 1));
+  const rows = list.slice(page * size, page * size + size).map(d => `<tr class="border-t border-slate-100 hover:bg-violet-50/50 cursor-pointer" onclick="openDecision('${d.c.id}')">
+    <td class="py-2.5 pr-3"><div class="font-medium">${esc(d.c.name)}</div><div class="text-xs text-slate-500">${esc(d.c.city)} · ${LANGS[d.c.lang]}</div></td>
+    <td class="py-2.5 pr-3">${segChip(d.c.seg)}</td><td class="py-2.5 pr-3">${outChip(d.outcome)}</td>
+    <td class="py-2.5 pr-3">${d.final ? offerChip(d.final) : '<span class="text-slate-400">–</span>'}</td>
+    <td class="py-2.5 pr-3 text-right tabular-nums">${d.final ? inr(d.final.cost) : '–'}</td>
+    <td class="py-2.5 pr-3 whitespace-nowrap">${d.final ? sendLabel(d.final) : '–'}</td>
+    <td class="py-2.5 text-slate-600 text-xs min-w-[18rem]">${esc(decisionWhy(d))}</td></tr>`).join('');
+  const tile = (k, label, n, sub) => `<button type="button" onclick="state.runFilter='${k}';state.runPage=0;render()" class="text-left bg-white rounded-2xl border p-4 hover:border-violet-400 ${state.runFilter === k ? 'border-violet-500 ring-2 ring-violet-200' : 'border-slate-200'}"><div class="text-sm text-slate-500">${label}</div><div class="text-2xl font-bold mt-1 tabular-nums">${num(n)}</div><div class="text-xs text-slate-500 mt-1">${sub}</div></button>`;
+  const steps = [['1', 'Customer rules', 'Opted out, bought recently, too many offers, high returns: skipped.'], ['2', 'Holdout', `${run.rules.holdoutPct}% kept out to measure results.`], ['3', 'AI picks', 'From the allowed offers only, with value, time and message.'], ['4', 'Rule check', 'Every pick is checked again. Problems go back to the AI once.'], ['5', 'Send', 'Passed: sent. Still failing: safe default or nothing.']];
+  return `${pageHead('Run offers', 'One campaign run: for every customer, which offer, why, and whether the rules let it through.', `<span class="text-xs text-slate-500">${state.rulesChanged ? '<span class="text-amber-700 font-medium">Rules changed since this run.</span>' : 'Using the current rules.'}</span>` + btn('Run campaign again', "runNow();render()"))}
+  <div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 mb-4"><b>The AI is simulated in this prototype.</b> It makes the kinds of mistakes a real model makes (late-night send times, discounts on low-margin categories, the wrong language, a missing expiry date, an over-eager phrase) so you can see the rule checker catch every one.</div>
+  <ol class="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-4">${steps.map(([n, t, d]) => `<li class="bg-white rounded-xl border border-slate-200 p-3"><div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-violet-600 text-white text-xs grid place-items-center font-semibold">${n}</span><span class="font-semibold text-sm">${t}</span></div><p class="text-xs text-slate-500 mt-1.5">${d}</p></li>`).join('')}</ol>
+  <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
+    ${tile('all', 'All customers', D.length, `${inr(run.spent)} of ${inr(run.rules.budget)} budget committed`)}
+    ${tile('sent', 'Sent as the AI chose', cnt('sent'), 'passed every rule first time')}
+    ${tile('fixed', 'Fixed, then sent', cnt('fixed'), 'broke a rule, fixed, re-checked')}
+    ${tile('fallback', 'Safe default sent', cnt('fallback'), 'AI could not fix it')}
+    ${tile('holdout', 'Holdout', cnt('holdout'), 'nothing sent, to measure')}
+    ${tile('notsent', 'Not sent', cnt('blocked') + cnt('budget'), cnt('budget') ? `${num(cnt('budget'))} because the budget ran out` : 'a rule said no')}
+  </div>
+  <div class="grid lg:grid-cols-3 gap-4 mt-4">
+    ${card(`${h2('Changed before sending', 'What the rule checker caught in the AI\'s first pick')}<div class="mt-3">${bars(changedBy, 'var(--series-2)')}</div>`)}
+    ${card(`${h2('Not sent', 'Customers the rules kept out of this campaign')}<div class="mt-3">${bars(blockedBy, '#94a3b8')}</div>`)}
+    ${card(`${h2('Offers sent', 'Mix of offer types that went out')}<div class="mt-3">${bars(Object.fromEntries(Object.entries(mix).map(([k, n]) => [`${OFFERS[k].icon} ${OFFERS[k].label}`, n])), 'var(--series-1)')}</div>`)}
+  </div>
+  ${card(`<div class="flex flex-wrap items-center justify-between gap-2">${h2('Every decision', 'Most valuable customers are decided first, so the budget goes to them. Click a row for the full check.')}
+      <span class="text-sm text-slate-500">Showing: <b>${state.runFilter === 'all' ? 'all' : state.runFilter === 'notsent' ? 'not sent' : OUTCOMES[state.runFilter].label.toLowerCase()}</b></span></div>
+    <div class="overflow-x-auto scroll-thin mt-3"><table class="w-full text-sm min-w-[980px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">Customer</th><th class="py-2 pr-3 font-medium">Segment</th><th class="py-2 pr-3 font-medium">Result</th><th class="py-2 pr-3 font-medium">Offer</th><th class="py-2 pr-3 font-medium text-right">Cost if used</th><th class="py-2 pr-3 font-medium">Send time</th><th class="py-2 font-medium">Why</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="7" class="py-8 text-center text-slate-500">Nothing here.</td></tr>'}</tbody></table></div>${pager(list.length, page, size, 'runPageTo')}`, 'mt-4')}`;
+}
+function runPageTo(p) { state.runPage = p; render(); }
+function openDecision(id) {
+  const d = state.run.decisions.find(x => x.c.id === id), c = d.c;
+  const step = (n, title, body) => `<div class="mt-5"><div class="flex items-center gap-2 mb-2"><span class="w-6 h-6 rounded-full bg-violet-600 text-white text-xs grid place-items-center font-semibold">${n}</span><h3 class="font-semibold">${title}</h3></div><div class="ml-8">${body}</div></div>`;
+  const offerBox = o => `<div class="rounded-xl border border-slate-200 p-3 text-sm space-y-1"><div class="flex flex-wrap gap-2 items-center">${offerChip(o)}<span class="text-slate-500">${sendLabel(o)} · costs up to ${inr(o.cost)} · ${LANGS[scriptLang(o.text)]}</span></div><div class="text-slate-600"><b>AI's reason:</b> ${esc(o.reason)}</div><div class="whitespace-pre-line rounded-lg bg-slate-50 p-2 text-[13px]">${esc(o.text)}</div></div>`;
+  let body = `<div class="flex items-start justify-between gap-3"><div><div class="text-xl font-bold">${esc(c.name)}</div><div class="mt-1 flex flex-wrap gap-1.5 items-center">${segChip(c.seg)}${outChip(d.outcome)}<span class="text-sm text-slate-500">${OUTCOMES[d.outcome].help}</span></div></div>${btn('Close', 'closeDrawer()', 'ghost')}</div>
+    <button type="button" class="mt-2 text-sm text-violet-700 font-medium hover:underline" onclick="openCustomer('${c.id}')">Open customer profile →</button>`;
+  body += step(1, 'Customer rules', checkList(d.pre));
+  if (d.outcome === 'holdout') body += step(2, 'Holdout', `<p class="text-sm text-slate-600">This customer was picked at random for the holdout group. Nothing is sent; their buying is compared with everyone else's.</p>`);
+  if (d.first) {
+    body += step(2, "AI's first pick", offerBox(d.first));
+    body += step(3, 'Rule check', checkList(d.firstChecks));
+    if (d.fixes.length) body += step(4, 'Sent back to the AI with the problems', `<ul class="text-sm list-disc ml-4 space-y-1">${d.fixes.map(f => `<li>${esc(f)}</li>`).join('')}</ul>${d.retryChecks && failed(d.retryChecks).length ? `<p class="text-sm text-rose-700 mt-2">Still failing: ${failed(d.retryChecks).map(x => CHECKS[x.id].label).join(', ')}.</p>` : ''}`);
+  }
+  if (d.final) body += step(d.fixes.length ? 5 : 4, d.outcome === 'sent' ? 'Sent' : d.outcome === 'fixed' ? 'Final offer, checked again and sent' : 'Safe rule-based offer sent', `${d.outcome !== 'sent' ? offerBox(d.final) + '<div class="mt-2">' + checkList(d.finalChecks) + '</div>' : '<p class="text-sm text-slate-600">The first pick passed every check and was sent as it was.</p>'}<div class="mt-3">${btn('See it in Telegram', `closeDrawer();showInTelegram('${c.id}')`, 'soft')}</div>`);
+  else if (d.outcome !== 'holdout') body += step(d.first ? 4 : 2, 'Not sent', `<p class="text-sm text-slate-600">${esc(decisionWhy(d))}</p>`);
+  openDrawer(body);
+}
+
+/* ---------- Telegram preview ---------- */
+function tgCandidates() {
+  const q = state.tg.q.trim().toLowerCase();
+  return state.run.decisions.filter(d => d.final && (!q || d.c.name.toLowerCase().includes(q) || d.c.city.toLowerCase().includes(q)));
+}
+function showInTelegram(id) { state.tg = { ...state.tg, id, lang: null, chat: [] }; go('telegram'); }
+function tgPick(id) { state.tg.id = id; state.tg.lang = null; state.tg.chat = []; render(); }
+function tgLang(l) { state.tg.lang = l; state.tg.chat = []; render(); }
+function tgAction(i) {
+  const d = state.run.decisions.find(x => x.c.id === state.tg.id), lang = state.tg.lang || d.c.lang, T = MSG[lang];
+  const exp = fmtDate(d.final.expiryDate, lang);
+  state.tg.chat.push({ who: 'note', text: `You tapped "${T.buttons[i].replace('🛍️ ', '')}"` });
+  state.tg.chat.push({ who: 'bot', text: [T.claim(d.final.code, exp), T.later(exp), T.stop][i] });
+  if (i === 2) state.tg.stopped = state.tg.id;
+  render();
+  const box = document.getElementById('tgChat'); if (box) box.scrollTop = box.scrollHeight;
+}
+function viewTelegram() {
+  const cands = tgCandidates();
+  if (!state.tg.id || !state.run.decisions.find(d => d.c.id === state.tg.id && d.final)) state.tg.id = (state.run.decisions.find(d => d.outcome === 'fixed') || cands[0])?.c.id;
+  const d = state.run.decisions.find(x => x.c.id === state.tg.id);
+  const c = d.c, o = d.final, lang = state.tg.lang || c.lang, T = MSG[lang];
+  const text = renderMessage(c, o, lang).split('\n');
+  const time = hourLabel(o.sendHour).replace(' ', ':00 ').toUpperCase();
+  const stopped = state.tg.stopped === c.id && state.tg.chat.length;
+  const bubble = (html, t = time) => `<div class="max-w-[85%] bg-white rounded-2xl rounded-bl-md px-3 py-2 shadow-sm text-[14px] leading-snug"><div class="tg-msg">${html}</div><div class="text-[11px] text-slate-400 text-right mt-0.5">${t}</div></div>`;
+  const listHtml = cands.slice(0, 60).map(x => `<button type="button" onclick="tgPick('${x.c.id}')" class="w-full text-left px-3 py-2 rounded-xl ${x.c.id === c.id ? 'bg-violet-50 ring-1 ring-violet-300' : 'hover:bg-slate-50'}"><div class="flex items-center justify-between gap-2"><span class="font-medium text-sm truncate">${esc(x.c.name)}</span>${outChip(x.outcome)}</div><div class="text-xs text-slate-500 truncate">${OFFERS[x.final.type].icon} ${esc(describeOffer(x.final))} · ${LANGS[x.c.lang]}</div></button>`).join('');
+  return `${pageHead('Telegram preview', 'Exactly what a customer sees in the bot. Classmates who start the real bot get a synthetic shopper profile and offers picked for it.')}
+  <div class="grid lg:grid-cols-[20rem_1fr] gap-4 items-start">
+    <div class="space-y-4 min-w-0">
+      ${card(`${h2('Pick a customer', `${num(cands.length)} customers got an offer in the last run`)}<input type="search" value="${esc(state.tg.q)}" oninput="state.tg.q=this.value;render();const i=document.getElementById('tgSearch');i.focus();i.setSelectionRange(i.value.length,i.value.length)" id="tgSearch" placeholder="Search name or city" class="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"><div class="mt-2 max-h-80 overflow-y-auto scroll-thin space-y-1">${listHtml || '<p class="text-sm text-slate-500 p-2">No match.</p>'}</div>`)}
+      ${card(`${h2('Why this offer')}<div class="mt-2 space-y-2 text-sm"><div class="flex flex-wrap gap-1.5">${segChip(c.seg)}${outChip(d.outcome)}</div><div>${offerChip(o)}</div><p class="text-slate-600">${esc(o.reason)}</p><p class="text-slate-500 text-xs">Sends ${sendLabel(o).toLowerCase()} · costs up to ${inr(o.cost)} if used · ${failed(d.finalChecks).length ? '' : 'passed all 9 message and offer checks'}</p>${d.fixes.length ? `<div class="rounded-lg bg-amber-50 border border-amber-200 p-2 text-xs"><b>Fixed by the rule checker:</b><ul class="list-disc ml-4 mt-1">${d.fixes.map(f => `<li>${esc(f)}</li>`).join('')}</ul></div>` : ''}<button type="button" class="text-violet-700 font-medium hover:underline" onclick="openDecision('${c.id}')">See the full decision →</button></div>`)}
+    </div>
+    <div class="min-w-0">
+      <div class="flex justify-center gap-1 mb-3" role="group" aria-label="Message language">${Object.entries({ en: 'English', hi: 'हिंदी', pa: 'ਪੰਜਾਬੀ' }).map(([k, l]) => `<button type="button" onclick="tgLang('${k}')" class="rounded-full px-3 py-1 text-sm border ${lang === k ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-300'}">${l}${k === c.lang ? ' ★' : ''}</button>`).join('')}</div>
+      <p class="text-center text-xs text-slate-500 mb-3">★ the customer's own language (always used when sending)</p>
+      <div class="mx-auto w-full max-w-[380px] rounded-[2.2rem] bg-slate-900 p-2.5 shadow-xl">
+        <div class="rounded-[1.8rem] overflow-hidden bg-white">
+          <div class="bg-[#517da2] text-white px-4 py-3 flex items-center gap-3"><span aria-hidden="true">←</span><div class="w-9 h-9 rounded-full bg-violet-500 grid place-items-center font-bold text-sm">BK</div><div><div class="font-semibold leading-tight">BazaarKart Offers</div><div class="text-xs text-white/75">bot</div></div></div>
+          <div id="tgChat" class="tg-bg h-[540px] overflow-y-auto scroll-thin p-3 space-y-2 flex flex-col">
+            <div class="self-center rounded-full bg-black/20 text-white text-xs px-3 py-0.5">${sendLabel(o).split(',')[0]}</div>
+            <div class="self-end max-w-[80%] bg-[#effdde] rounded-2xl rounded-br-md px-3 py-2 shadow-sm text-[14px]">/start<div class="text-[11px] text-emerald-700/70 text-right">${time}</div></div>
+            ${bubble(esc(T.welcomeBot(c)))}
+            <div class="max-w-[85%]">
+              ${bubble(`${esc(text[0])}\n<b>${esc(text[1])}</b>\n<span class="text-slate-600">${esc(text[2])}</span>`)}
+              <div class="grid grid-cols-2 gap-1 mt-1">${T.buttons.map((b, i) => `<button type="button" ${stopped ? 'disabled' : ''} onclick="tgAction(${i})" class="${i === 0 ? 'col-span-2' : ''} rounded-lg bg-[#4a6b3a]/35 hover:bg-[#4a6b3a]/50 text-white text-sm font-medium py-1.5 disabled:opacity-50">${esc(b)}</button>`).join('')}</div>
+            </div>
+            ${state.tg.chat.map(m => m.who === 'note' ? `<div class="self-center rounded-full bg-black/20 text-white text-xs px-3 py-0.5">${esc(m.text)}</div>` : bubble(esc(m.text))).join('')}
+          </div>
+          <div class="bg-white px-3 py-2.5 flex items-center gap-2 border-t border-slate-200 text-slate-400 text-sm"><span>☺</span><span class="flex-1">Message</span><span>📎</span></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- Results ---------- */
+function viewResults() {
+  const ev = state.ev, run = state.run;
+  const inc = ev.withO.profit - ev.without.profit, incRev = ev.withO.rev - ev.without.rev, cost = ev.withO.cost;
+  const m = ev.measured;
+  const [bl, ru, ai] = ev.strategies;
+  const groupInfo = {
+    sure: ['Would buy anyway', 'Discounts here are lost margin.'],
+    persuadable: ['Persuadable', 'An offer changes what they do. Spend here.'],
+    lost: ['Unlikely either way', 'Even a good offer rarely moves them.'],
+    dnd: ['Do not disturb', 'More likely to unsubscribe than to buy.'],
+  };
+  const gMax = Math.max(1, ...ev.groupRows.flatMap(g => [g.ai, g.blanket]));
+  const pts = v => `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)} pts`;
+  return `${pageHead('Results', 'Did the offers make money? Simulated for the 14 days after sending, using each synthetic customer\'s hidden buying behaviour. Profit also counts future orders from customers won back from leaving.', state.rulesChanged ? `<span class="text-xs text-amber-700 font-medium">Rules changed since this run.</span>${btn('Run again', 'runNow();render()')}` : '')}
+  <div class="rounded-2xl bg-gradient-to-r from-violet-600 to-violet-500 text-white p-5 md:p-6">
+    <div class="text-sm text-violet-100">Extra profit from this campaign (expected, after discounts)</div>
+    <div class="text-4xl font-bold mt-1 tabular-nums">${inr(inc)}</div>
+    <div class="text-sm text-violet-100 mt-1">${num(ev.T.length)} offers sent · ${inc > 0 && cost > 0 ? `every ₹1 given away in discounts came back as ₹${(inc / cost).toFixed(2)} of extra profit` : 'the discounts cost more than they brought in'}</div>
+  </div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+    ${kpi('Bought within 14 days', `${pct(m.cT)} vs ${pct(m.cH)}`, `offered vs holdout (${pts(m.up)})`)}
+    ${kpi('Extra revenue', inr(incRev), 'extra orders and bigger baskets')}
+    ${kpi('Discounts given', inr(cost), 'only counted when a customer uses the offer')}
+    ${kpi('Holdout size', num(ev.H.length), `${run.rules.holdoutPct}% of eligible customers`)}
+  </div>
+  ${card(`${h2('How sure can we be?', 'The holdout is how a real platform measures this. Small holdouts give noisy answers.')}
+    <p class="text-sm text-slate-700 mt-2">The true lift is <b>${pts(ev.withO.orders / ev.T.length - ev.without.orders / ev.T.length)}</b> in the share of customers who buy. With ${num(ev.H.length)} customers in the holdout, one fortnight's measurement would land between <b>${pts(m.upLo)}</b> and <b>${pts(m.upHi)}</b> 9 times out of 10 (200 simulated fortnights). ${m.upLo <= 0 ? 'That range includes zero: make the holdout bigger or measure for longer before deciding.' : 'The range stays above zero, so the effect is clear.'}</p>`, 'mt-4')}
+  <div class="grid lg:grid-cols-5 gap-4 mt-4">
+    ${card(`${h2('Three ways to run the same campaign', 'Extra profit and discount cost compared with sending nothing, for the same customers.')}<div class="h-72 mt-3"><canvas id="chStrat" aria-label="Strategy comparison bar chart"></canvas></div>`, 'lg:col-span-3')}
+    ${card(`${h2('What this means')}
+      <div class="mt-2 space-y-3 text-sm text-slate-700">
+        <p><b>20% off for everyone</b> brings ${inr(bl.dRev)} extra revenue but gives away ${inr(bl.cost)} in discounts, mostly to people who would have bought anyway. Profit changes by <b>${inr(bl.dProfit)}</b>.</p>
+        <p><b>One offer per segment</b> (the usual rule-based playbook: the same offer for everyone in a segment) adds <b>${inr(ru.dProfit)}</b> for ${inr(ru.cost)} of discounts.</p>
+        <p><b>AI within rules</b> adds <b>${inr(ai.dProfit)}</b> for ${inr(ai.cost)} of discounts, because it matches the offer to the person.</p>
+      </div>`, 'lg:col-span-2')}
+  </div>
+  ${card(`<div class="overflow-x-auto scroll-thin"><table class="w-full text-sm min-w-[640px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">Strategy</th><th class="py-2 pr-3 font-medium text-right">Extra orders</th><th class="py-2 pr-3 font-medium text-right">Extra revenue</th><th class="py-2 pr-3 font-medium text-right">Discounts given</th><th class="py-2 pr-3 font-medium text-right">Extra profit</th><th class="py-2 font-medium text-right">Customers who unsubscribe</th></tr></thead>
+    <tbody>${ev.strategies.map(s => `<tr class="border-t border-slate-100 ${s.key === 'ai' ? 'font-semibold' : ''}"><td class="py-2.5 pr-3">${s.label}</td><td class="py-2.5 pr-3 text-right tabular-nums">${num(s.dOrders)}</td><td class="py-2.5 pr-3 text-right tabular-nums">${inr(s.dRev)}</td><td class="py-2.5 pr-3 text-right tabular-nums">${inr(s.cost)}</td><td class="py-2.5 pr-3 text-right tabular-nums ${s.dProfit < 0 ? 'text-rose-700' : ''}">${inr(s.dProfit)}</td><td class="py-2.5 text-right tabular-nums">${num(s.opt)}</td></tr>`).join('')}</tbody></table></div>`, 'mt-4')}
+  <div class="grid lg:grid-cols-2 gap-4 mt-4">
+    ${card(`${h2('Who is the discount money going to?', 'Expected discount spend by how customers respond to offers. A real platform estimates these groups from past holdout tests.')}
+      <div class="mt-3 flex gap-4 text-xs text-slate-600"><span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm" style="background:var(--series-1)"></span>AI within rules</span><span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm" style="background:var(--series-2)"></span>20% off for everyone</span></div>
+      <div class="mt-2 divide-y divide-slate-100">${ev.groupRows.map(g => `<div class="py-3"><div class="flex items-baseline justify-between gap-2"><div><span class="font-medium text-sm">${groupInfo[g.k][0]}</span> <span class="text-xs text-slate-500">${num(g.n)} customers</span></div><span class="text-xs text-slate-500">${groupInfo[g.k][1]}</span></div>
+        <div class="mt-1.5 space-y-1">${[['ai', 'var(--series-1)'], ['blanket', 'var(--series-2)']].map(([k, col]) => `<div class="flex items-center gap-2"><div class="h-2.5 flex-1"><div class="h-2.5 rounded-r" style="background:${col};width:${Math.max(.5, g[k] / gMax * 100)}%"></div></div><span class="w-20 text-right text-xs tabular-nums">${inr(g[k])}</span></div>`).join('')}</div></div>`).join('')}</div>`)}
+    ${card(`${h2('By segment', 'Chance of buying in 14 days, and extra profit from the offer.')}
+      <div class="overflow-x-auto scroll-thin mt-2"><table class="w-full text-sm min-w-[520px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">Segment</th><th class="py-2 pr-3 font-medium text-right">Customers</th><th class="py-2 pr-3 font-medium text-right">Buy anyway</th><th class="py-2 pr-3 font-medium text-right">With AI offer</th><th class="py-2 pr-3 font-medium text-right">Extra profit (AI)</th><th class="py-2 font-medium text-right">Extra profit (20% for all)</th></tr></thead>
+      <tbody>${ev.bySeg.map(r => `<tr class="border-t border-slate-100"><td class="py-2.5 pr-3">${segChip(r.s)}</td><td class="py-2.5 pr-3 text-right tabular-nums">${num(r.n)}</td><td class="py-2.5 pr-3 text-right tabular-nums">${pct(r.base)}</td><td class="py-2.5 pr-3 text-right tabular-nums">${pct(r.aiConv)}</td><td class="py-2.5 pr-3 text-right tabular-nums ${r.aiProfit < 0 ? 'text-rose-700' : ''}">${inr(r.aiProfit)}</td><td class="py-2.5 text-right tabular-nums ${r.blProfit < 0 ? 'text-rose-700' : ''}">${inr(r.blProfit)}</td></tr>`).join('')}</tbody></table></div>`)}
+  </div>`;
+}
+function afterResults() {
+  const s = state.ev.strategies;
+  barChart('chStrat', s.map(x => x.label), [
+    { label: 'Extra profit', data: s.map(x => Math.round(x.dProfit)), backgroundColor: css('--series-1') },
+    { label: 'Discounts given', data: s.map(x => Math.round(x.cost)), backgroundColor: css('--series-2') },
+  ], { yFmt: lakh, legend: true, tip: ctx => ` ${ctx.dataset.label}: ${inr(ctx.raw)}` });
+}
+
+/* ---------- Shell and navigation ---------- */
+const VIEWS = {
+  overview:  { label: 'Overview',         icon: '📊', html: viewOverview, after: afterOverview },
+  customers: { label: 'Customers',        icon: '👥', html: viewCustomers },
+  rules:     { label: 'Rules',            icon: '🧭', html: viewRules },
+  run:       { label: 'Run offers',       icon: '🚀', html: viewRun },
+  telegram:  { label: 'Telegram preview', icon: '💬', html: viewTelegram },
+  results:   { label: 'Results',          icon: '📈', html: viewResults, after: afterResults },
+};
+function go(screen) { state.screen = screen; closeDrawer(); render(); window.scrollTo(0, 0); try { history.replaceState(null, '', '#' + screen); } catch (e) { /* file:// may block */ } }
+function render() {
+  clearCharts();
+  document.getElementById('nav').innerHTML = Object.entries(VIEWS).map(([k, v]) => `<button type="button" onclick="go('${k}')" class="shrink-0 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap ${state.screen === k ? 'bg-violet-50 text-violet-700' : 'text-slate-600 hover:bg-slate-50'}" ${state.screen === k ? 'aria-current="page"' : ''}><span aria-hidden="true">${v.icon}</span>${v.label}</button>`).join('');
+  const v = VIEWS[state.screen];
+  const fresh = state.lastScreen !== state.screen;
+  document.getElementById('main').innerHTML = `<div class="${fresh ? 'fade-in' : ''}">${v.html()}</div>`;
+  state.lastScreen = state.screen;
+  if (v.after) v.after();
+}
+document.getElementById('app').innerHTML = `<div class="min-h-screen md:flex">
+  <aside class="bg-white border-b md:border-b-0 md:border-r border-slate-200 md:w-60 md:shrink-0 md:h-screen md:sticky md:top-0 flex flex-col">
+    <div class="px-4 pt-3 pb-2 md:py-5 flex items-center gap-2.5"><div class="w-9 h-9 rounded-xl bg-violet-600 text-white grid place-items-center text-lg" aria-hidden="true">🎁</div><div><div class="font-bold leading-tight">Peshkash</div><div class="text-xs text-slate-500 leading-tight">Offer engine · BazaarKart</div></div></div>
+    <nav id="nav" aria-label="Screens" class="flex md:flex-col gap-1 px-2 md:px-3 pb-2 overflow-x-auto scroll-thin"></nav>
+    <div class="hidden md:block mt-auto p-4 text-xs text-slate-500 border-t border-slate-200">Prototype · synthetic data only.<br>AI choices are simulated here; the real engine uses Claude.</div>
+  </aside>
+  <main id="main" class="flex-1 min-w-0 px-4 py-5 md:px-8 md:py-7"></main>
+</div><div id="drawer"></div>`;
+runNow();
+if (VIEWS[location.hash.slice(1)]) state.screen = location.hash.slice(1);
+render();
+</script>
+</body>
+</html>

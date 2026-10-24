@@ -9,12 +9,14 @@ Built for Hackathon 2, Punjab Jobs AI Bootcamp (J-PAL South Asia). All customer 
 See [docs/requirements.md](docs/requirements.md) for the full feature list and build order.
 
 ## Try the prototype
-Double-click `prototype/index.html`. It generates ~1,200 synthetic BazaarKart customers in the browser and lets you:
+Double-click `prototype/index.html`. It generates 1,500 synthetic BazaarKart customers in the browser and lets you:
 - explore customers and their segments,
 - change the offer rules,
 - run a campaign and see which offers were sent, fixed or blocked (and why),
 - preview the Telegram message each customer would get,
 - compare results against a holdout group and against "20% off for everyone".
+
+Open a screen directly with `index.html#overview`, `#customers`, `#rules`, `#run`, `#telegram` or `#results`.
 
 The AI in the prototype is simulated; the real one (Claude) comes with the backend.
 
