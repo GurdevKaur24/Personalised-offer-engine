@@ -56,7 +56,8 @@ def coupon_code(c: dict, o: Offer) -> str:
 
 def make_offer(c: dict, type: str, rules: Rules, *, cat: str | None = None, pct: int = 0, flat: int = 0, min_order: int = 0,
                send_hour: int | None = None, send_day: int | None = None, expiry_days: int | None = None,
-               lang: str | None = None, no_expiry: bool = False, extra_line: str = "", reason: str = "") -> Offer:
+               lang: str | None = None, no_expiry: bool = False, extra_line: str = "", reason: str = "",
+               today: date = TODAY) -> Offer:
     """Build an offer for a customer view `c`. Nothing here checks the rules; that is the checker's job."""
     o = Offer(type=type, pct=pct, flat=flat, min_order=min_order, lang=lang or c["lang"], reason=reason,
               expiry_days=rules.expiry_days if expiry_days is None else expiry_days)
@@ -76,7 +77,7 @@ def make_offer(c: dict, type: str, rules: Rules, *, cat: str | None = None, pct:
     o.send_hour = c["active_hour"] if send_hour is None else send_hour
     o.send_day = (1 if o.send_hour <= NOW_HOUR else 0) if send_day is None else send_day
     o.code = coupon_code(c, o)
-    o.expiry_date = TODAY + timedelta(days=o.send_day + o.expiry_days)
+    o.expiry_date = today + timedelta(days=o.send_day + o.expiry_days)
     o.expiry_label = fmt_date(o.expiry_date, o.lang)
     o.text = render_message(c, o, o.lang, no_expiry=no_expiry, extra_line=extra_line)
     return o

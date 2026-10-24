@@ -84,6 +84,6 @@ vs "AI within rules".
 2. ✅ Python data generator + realism tests.
 3. ✅ Rules engine and checker + tests.
 4. Claude agent (structured output, retry, fallback, audit log).
-5. Telegram bot (start, profile, offers with buttons, cart flow, stop).
+5. ✅ Telegram bot (start, profile, offers with buttons, cart flow, stop), with rule-based offers for now.
 6. FastAPI serves the page in live mode; results from real bot events.
 7. Advanced features.

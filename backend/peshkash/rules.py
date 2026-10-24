@@ -68,6 +68,7 @@ class Rules:
     welcome_flat: int = 100
     expiry_days: int = 7
     require_expiry: bool = True
+    cart_own_limit: bool = True    # cart reminders skip the weekly limit and gap; one reminder per cart
     max_chars: int = 350
     banned: list[str] = field(default_factory=lambda: ["guaranteed", "free money", "last chance ever", "risk-free", "100% free"])
     grid: dict[str, list[str]] = field(default_factory=lambda: {k: list(v) for k, v in DEFAULT_GRID.items()})
@@ -82,6 +83,8 @@ class Rules:
                 out.append(f"{label} must be between {lo:,} and {hi:,} (it is {v:,}).")
         if not isinstance(self.require_expiry, bool):
             out.append("“Show the expiry date” must be on or off.")
+        if not isinstance(self.cart_own_limit, bool):
+            out.append("“Cart reminders have their own limit” must be on or off.")
         if not isinstance(self.banned, list) or not all(isinstance(w, str) and w.strip() for w in self.banned):
             out.append("Banned words must be a list of words or phrases.")
         if not isinstance(self.grid, dict):

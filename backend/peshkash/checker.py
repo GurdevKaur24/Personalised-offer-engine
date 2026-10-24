@@ -86,9 +86,12 @@ def allowed_offers(c: dict, r: Rules) -> list[str]:
     return [t for t in r.grid.get(c["seg"], []) if fits(t)]
 
 
-def check_customer(c: dict, r: Rules) -> list[Check]:
+def check_customer(c: dict, r: Rules, cart_trigger: bool = False) -> list[Check]:
+    """`cart_trigger`: the customer just left a cart. With the cart_own_limit rule on, the weekly limit and the gap
+    between offers don't apply (the caller sends at most one reminder per cart)."""
     rec = c["recency"]
-    return [
+    own = cart_trigger and r.cart_own_limit
+    checks = [
         Check("optout", not c["opted_out"], 'Tapped "Stop offers" earlier.' if c["opted_out"] else "Still happy to get offers."),
         Check("recent", rec is None or rec >= r.skip_recent_days,
               f"Bought {'today' if rec == 0 else 'yesterday' if rec == 1 else f'{rec} days ago'}; the rule skips anyone who bought in the last {_plural(r.skip_recent_days, 'day')}."
@@ -100,6 +103,11 @@ def check_customer(c: dict, r: Rules) -> list[Check]:
         Check("gap", c["last_offer_ago"] >= r.min_gap_days,
               "No recent offers." if c["last_offer_ago"] >= 99 else f"Last offer {c['last_offer_ago']} days ago (needs {_plural(r.min_gap_days, 'day')} in between)."),
     ]
+    if own:
+        for x in checks:
+            if x.id in ("weekcap", "gap") and not x.ok:
+                x.ok, x.detail = True, f"{x.detail[:-1]}, but cart reminders have their own limit: one per cart."
+    return checks
 
 
 def check_offer(c: dict, o: Offer, r: Rules, spent: int = 0) -> list[Check]:

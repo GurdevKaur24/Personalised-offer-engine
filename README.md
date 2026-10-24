@@ -33,5 +33,17 @@ The generator writes `backend/data/generated/peshkash.db` and one CSV per table,
 (revenue concentration, cart abandonment, festive and salary-day spikes, cash on delivery by city size, returns,
 basket sizes, sign-ups who never buy).
 
+## Telegram bot
+1. In Telegram, open **@BotFather**, send `/newbot`, and pick a name and a username ending in `bot`.
+2. Copy `.env.example` to `.env` (project folder) and paste the token after `TELEGRAM_BOT_TOKEN=`.
+3. Run it and share the link it prints (`https://t.me/<your bot>`) with classmates:
+```
+cd backend
+.\.venv\Scripts\python -m bot.main
+```
+Classmates pick English, Hindi or Punjabi, get a made-up shopper profile and offers picked for it, and can claim,
+postpone or stop offers. `/shop` lets them fill a cart; leave it for 2 minutes and a cart reminder arrives (if the rules
+allow). Offers asked for during quiet hours wait until morning. Every decision is logged in `backend/data/live.db`.
+
 ## Secrets
 Copy `.env.example` to `.env` and fill in your own values. `.env` is git-ignored; never commit tokens or keys.

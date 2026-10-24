@@ -54,6 +54,14 @@ def test_weekly_offer_limit(this_week, ok):
     assert result(check_customer(customer(offers_this_week=this_week), R), "weekcap").ok is ok
 
 
+def test_cart_reminders_can_have_their_own_limit():
+    c = customer(offers_this_week=2, last_offer_ago=0)
+    assert not any(x.ok for x in check_customer(c, R) if x.id in ("weekcap", "gap"))
+    assert all(x.ok for x in check_customer(c, R, cart_trigger=True) if x.id in ("weekcap", "gap"))
+    assert not any(x.ok for x in check_customer(c, Rules(cart_own_limit=False), cart_trigger=True) if x.id in ("weekcap", "gap"))
+    assert not result(check_customer(customer(opted_out=True), R, cart_trigger=True), "optout").ok   # stopping always wins
+
+
 @pytest.mark.parametrize("days, ok", [(0, False), (2, False), (3, True), (99, True)])
 def test_days_between_offers(days, ok):
     assert result(check_customer(customer(last_offer_ago=days), R), "gap").ok is ok

@@ -19,12 +19,22 @@ Demo store: **BazaarKart**, a fictional Indian general marketplace. All customer
   - `rules.py`: `Rules` (marketing limits) with plain-English validation; saved as JSON.
   - `offers.py` + `messages.py`: build one offer (value, cost, timing, code) and its message in en/hi/pa.
   - `checker.py`: the rule checker. `check_customer` + `check_offer`; `safe_to_send` is the only gate to sending.
-  - Coming next: FastAPI, the Claude agent (anthropic SDK), python-telegram-bot v21.
+    Rule `cart_own_limit`: cart reminders skip the weekly limit and gap (one reminder per cart).
+  - `engine.py`: `decide()` picks the best allowed offer that passes every check (rule-based for now; the Claude
+    agent will choose from the same allowed list). Moves offers out of quiet hours. Holdout by customer id.
+- **backend/bot/**: the Telegram bot, standard library only (urllib long polling; no python-telegram-bot).
+  - `app.py` (`OfferBot`): behaviour, testable with a fake Telegram. `handle(update)` + `tick()` (queued offers,
+    cart reminders). Each classmate gets a synthetic shopper; their live offers, carts and orders are added on top
+    (`live_view`). Queued offers are re-checked before sending. Rules are re-read from `data/rules.json` each time.
+  - `store.py`: SQLite `data/live.db` (git-ignored): users (chat id only), profiles, offers, carts, live orders, events (audit log).
+  - `texts.py`: everything the bot says in en/hi/pa. `telegram.py`: tiny Bot API client. `main.py`: the runner.
+- Coming next: the Claude agent (anthropic SDK), FastAPI serving the app page in live mode.
 
 ## Run
 ```
 cd backend; .\.venv\Scripts\python -m peshkash.datagen     # writes data/generated/ and prints the realism checks
 cd backend; .\.venv\Scripts\python -m pytest
+cd backend; .\.venv\Scripts\python -m bot.main   # needs TELEGRAM_BOT_TOKEN in ../.env
 ```
 
 ## Glossary

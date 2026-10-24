@@ -24,6 +24,7 @@ def test_out_of_range_value_is_refused_in_plain_english():
     ({"grid": {"loyal": ["free_iphone"]}}, "Loyal: unknown offer type free_iphone"),
     ({"banned": ["ok", 5]}, "Banned words must be a list"),
     ({"require_expiry": "yes"}, "“Show the expiry date” must be on or off"),
+    ({"cart_own_limit": 1}, "“Cart reminders have their own limit” must be on or off"),
 ])
 def test_bad_rules_are_explained(data, words):
     with pytest.raises(RulesError) as e:
