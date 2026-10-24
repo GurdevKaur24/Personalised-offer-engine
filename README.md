@@ -20,5 +20,18 @@ Open a screen directly with `index.html#overview`, `#customers`, `#rules`, `#run
 
 The AI in the prototype is simulated; the real one (Claude) comes with the backend.
 
+## Backend (so far)
+Generate the synthetic data and run the tests (Windows):
+```
+cd backend
+py -3.12 -m venv .venv
+.\.venv\Scripts\python -m pip install -r requirements.txt
+.\.venv\Scripts\python -m peshkash.datagen
+.\.venv\Scripts\python -m pytest
+```
+The generator writes `backend/data/generated/peshkash.db` and one CSV per table, then prints nine realism checks
+(revenue concentration, cart abandonment, festive and salary-day spikes, cash on delivery by city size, returns,
+basket sizes, sign-ups who never buy).
+
 ## Secrets
 Copy `.env.example` to `.env` and fill in your own values. `.env` is git-ignored; never commit tokens or keys.

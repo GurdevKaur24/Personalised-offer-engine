@@ -9,8 +9,23 @@ Demo store: **BazaarKart**, a fictional Indian general marketplace. All customer
 - **prototype/index.html**: single clickable page, opens as a file. Generates synthetic data in the browser from a fixed
   seed, runs rules, a *simulated* AI pick and the rule checker, previews Telegram messages, shows results. Tailwind and
   Chart.js from CDN.
-- **backend/** (next): Python 3.12, FastAPI, SQLite, pytest, numpy/pandas, Faker, anthropic SDK (Claude Haiku),
-  python-telegram-bot v21.
+- **backend/**: Python 3.12, pytest. The `peshkash/` package is pure standard-library Python (no web framework):
+  - `catalog.py`: calendar (TODAY = Sat 24 Oct 2026, sales, salary days), categories with margins, cities, hidden personas.
+  - `datagen.py`: synthetic customers (fixed seed) → `data/generated/peshkash.db` + CSVs (git-ignored).
+    Personas are stored in their own table `hidden_personas` and only loaded with `with_personas=True`.
+  - `features.py`: `customer_view()` turns raw data into what the engine sees (RFM, churn risk, coupon use, segment)
+    and drops every `_`-prefixed (hidden) key.
+  - `realism.py`: nine checks that the data behaves like real shoppers.
+  - `rules.py`: `Rules` (marketing limits) with plain-English validation; saved as JSON.
+  - `offers.py` + `messages.py`: build one offer (value, cost, timing, code) and its message in en/hi/pa.
+  - `checker.py`: the rule checker. `check_customer` + `check_offer`; `safe_to_send` is the only gate to sending.
+  - Coming next: FastAPI, the Claude agent (anthropic SDK), python-telegram-bot v21.
+
+## Run
+```
+cd backend; .\.venv\Scripts\python -m peshkash.datagen     # writes data/generated/ and prints the realism checks
+cd backend; .\.venv\Scripts\python -m pytest
+```
 
 ## Glossary
 - **Persona**: hidden behaviour type used only to generate data and simulate responses. The engine never reads it.
