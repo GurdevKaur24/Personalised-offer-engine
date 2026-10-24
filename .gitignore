@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Generated data and local database
+data/generated/
+backend/data/generated/
+*.db
+*.db-journal
+
+# Secrets / OS / editors
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
