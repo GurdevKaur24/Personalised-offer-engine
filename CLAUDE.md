@@ -4,6 +4,7 @@ Decides which offer each customer of an e-commerce platform should get and deliv
 (Hackathon 2, Punjab Jobs AI Bootcamp, J-PAL South Asia). Full plan: `docs/requirements.md`.
 
 Demo store: **BazaarKart**, a fictional Indian general marketplace. All customer data is synthetic.
+Bot: **@BazaarKartOffers_bot**. User-facing setup and usage: `README.md`; hosting: `docs/deploy.md`.
 
 ## Stack
 - **prototype/index.html**: single clickable page, opens as a file. Generates synthetic data in the browser from a fixed
@@ -65,11 +66,16 @@ cd backend; .\.venv\Scripts\python -m bot.main   # bot + marketer page on http:/
 ## Hard rules (never broken; enforced by the rule checker)
 1. Nothing is sent unless the rule checker passes it. The checker is the source of truth for "safe to send".
 2. The AI only sees allowed offers; its output is still re-checked (type, value, margin floor, budget, caps, message).
-3. Holdout customers, opted-out customers and customers in quiet hours never get a message.
+3. Opted-out customers never get a message, and nothing is sent during quiet hours (offers wait and are re-checked
+   before sending). In campaigns, holdout customers get nothing; classmates testing the bot are never held out
+   (`use_holdout=False` in `bot/app.py`).
 4. Every decision is logged with its reason (sent, fixed, blocked, holdout).
 
 ## Conventions
 - Synthetic data only. Bot token and API keys live in `.env` (git-ignored); `.env.example` lists the names.
-- Rule checker and data generator are pure Python and must have tests.
+- Rule checker and data generator are pure Python and must have tests. Tests never call the real Claude or Telegram
+  (fake chooser, fake Telegram), so they are free and run offline.
 - Small Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `chore:`); keep `main` runnable.
+- Once hosted, every push to `main` redeploys the bot (Render) and resets its live data; until judging ends, push
+  only deliberate, tested changes.
 - UI copy is plain English for a marketing team; amounts in ₹ with Indian digit grouping.

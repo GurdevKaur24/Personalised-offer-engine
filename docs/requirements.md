@@ -84,6 +84,7 @@ vs "AI within rules".
 2. ✅ Python data generator + realism tests.
 3. ✅ Rules engine and checker + tests.
 4. ✅ Claude agent (structured output, retry, fallback, audit log).
-5. ✅ Telegram bot (start, profile, offers with buttons, cart flow, stop), with rule-based offers for now.
+5. ✅ Telegram bot (start, profile, offers with buttons, cart flow, stop); offers come from the Claude agent.
 6. ✅ The bot serves the page in live mode: rules editing, live results and the decision log from real bot events.
-7. Advanced features.
+7. ✅ Hosting setup for Render (password-protected page, health check, deploy guide).
+8. Advanced features (rule-change preview, approval queue, coupon-abuse signals).
