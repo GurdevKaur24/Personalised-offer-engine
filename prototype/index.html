@@ -1479,9 +1479,17 @@ function saveStatusHtml() {
 }
 function showSaveStatus() { const el = document.getElementById('liveSave'); if (el) el.innerHTML = saveStatusHtml(); }
 async function refreshLive() {
-  try { [LIVE.data, LIVE.log] = await Promise.all([api('/api/live'), api('/api/decisions')]); LIVE.error = null; }
+  try { [LIVE.data, LIVE.log] = await Promise.all([api('/api/live'), api('/api/decisions')]); LIVE.error = null; LIVE.updatedAt = new Date(); }
   catch (e) { LIVE.error = 'Could not reach the bot. Is it still running?'; }
 }
+async function manualRefresh(button) {
+  button.disabled = true;
+  button.textContent = 'Refreshing…';
+  await refreshLive();
+  render();
+}
+const updatedLabel = () => LIVE.updatedAt
+  ? `<span class="text-xs text-slate-500">Updated ${LIVE.updatedAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span>` : '';
 async function startLive() {
   if (!location.protocol.startsWith('http')) return;                       // opened as a file: demo mode
   try { LIVE.info = await api('/api/status'); } catch (e) { return; }       // some other server: demo mode
@@ -1560,7 +1568,7 @@ function viewLive() {
       <td class="py-2.5 pr-3">${chipOf(SOURCES[o.source])}</td><td class="py-2.5 pr-3">${chipOf(LIVE_STATUS[o.status])}</td>
       <td class="py-2.5 text-right tabular-nums">${inr(o.cost)}</td></tr>`).join('');
   return `${pageHead('Live bot', `What customers get from ${bot ? '@' + esc(bot) : 'the bot'}, as it happens. Updates every 10 seconds.`,
-      (link ? `<a href="${link}" target="_blank" rel="noopener" class="rounded-xl px-3.5 py-2 text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white">Open the bot</a>` : '') + btn('Refresh', 'refreshLive().then(render)', 'ghost'))}
+      (link ? `<a href="${link}" target="_blank" rel="noopener" class="rounded-xl px-3.5 py-2 text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white">Open the bot</a>` : '') + updatedLabel() + btn('Refresh', 'manualRefresh(this)', 'ghost', 'disabled:opacity-60'))}
     ${LIVE.error ? `<div class="mb-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">${esc(LIVE.error)}</div>` : ''}
     <div class="mb-4 flex flex-wrap gap-2 text-sm"><span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1">● Bot running</span><span class="rounded-full ${LIVE.info.ai_model ? 'bg-brand-100 text-brand-800' : 'bg-slate-200 text-slate-700'} px-3 py-1">${LIVE.info.ai_model ? `AI: ${esc(LIVE.info.ai_model)} chooses within the rules` : 'AI off: rule-based offers'}</span></div>
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -1591,7 +1599,7 @@ function viewLog() {
       <td class="py-2.5 pr-3">${d.outcome === 'offer' ? chipOf(['Offer made', 'bg-emerald-100 text-emerald-800']) : chipOf(['Not sent', 'bg-rose-100 text-rose-800'])}</td>
       <td class="py-2.5 pr-3">${d.outcome === 'offer' || d.ai_attempts.length ? chipOf(SOURCES[d.source]) : ''}</td>
       <td class="py-2.5 text-xs text-slate-600 min-w-[18rem]">${d.offer ? `<b class="text-slate-800">${esc(d.offer)}</b> · ` : ''}${esc(d.outcome === 'offer' ? d.reason : (d.failed[0]?.detail || d.reason))}${d.ai_attempts.some(a => a.failed?.length) ? `<div class="text-amber-700 mt-0.5">Checker refused: ${esc(d.ai_attempts.flatMap(a => (a.failed || []).map(f => f.detail)).join(' · '))}</div>` : ''}</td></tr>`).join('');
-  return `${pageHead('Decision log', 'Every time the engine decided for a customer, including when nothing was sent and why. Newest first.', btn('Refresh', 'refreshLive().then(render)', 'ghost'))}
+  return `${pageHead('Decision log', 'Every time the engine decided for a customer, including when nothing was sent and why. Newest first.', updatedLabel() + btn('Refresh', 'manualRefresh(this)', 'ghost', 'disabled:opacity-60'))}
     ${card(`<div class="flex flex-wrap gap-2">${Object.keys(F).map(chip).join('')}</div>
       <div class="overflow-x-auto scroll-thin mt-3"><table class="w-full text-sm min-w-[900px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">When</th><th class="py-2 pr-3 font-medium">Trigger</th><th class="py-2 pr-3 font-medium">Shopper</th><th class="py-2 pr-3 font-medium">Result</th><th class="py-2 pr-3 font-medium">Chosen by</th><th class="py-2 font-medium">Offer and reason</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="6" class="py-8 text-center text-slate-500">Nothing here yet.</td></tr>'}</tbody></table></div>`)}`;
