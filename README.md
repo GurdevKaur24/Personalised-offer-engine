@@ -34,8 +34,9 @@ Offers asked for between 9 pm and 9 am wait until morning (quiet hours). That is
 
 ### The marketer page
 While the bot runs, it also serves a page for the marketing team: the bot's live results, the decision log and the
-rules (which the bot uses from its next decision). Locally it is at **http://localhost:8010**; when hosted, it asks
-for a password.
+rules (which the bot uses from its next decision). Hosted at **https://peshkash.onrender.com** (it asks for a
+password: any user name, and the page password given with the submission). Locally it is at
+**http://localhost:8010**, with no password.
 
 ### The clickable prototype
 Double-click `prototype/index.html`. It runs entirely in the browser (no setup) on 1,500 made-up shoppers, with a
