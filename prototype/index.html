@@ -9,11 +9,11 @@
 <!-- Prototype only: Tailwind's Play CDN builds styles in the browser. Pre-build it (like Samay) before going live. -->
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <script>
-  tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'Noto Sans Devanagari', 'Noto Sans Gurmukhi', 'system-ui', 'sans-serif'] } } } };
+  tailwind.config = { theme: { extend: { colors: { brand: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#e11d48', 600: '#be123c', 700: '#9f1239', 800: '#881337', 900: '#4c0519' } }, fontFamily: { sans: ['Inter', 'Noto Sans Devanagari', 'Noto Sans Gurmukhi', 'system-ui', 'sans-serif'] } } } };
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root { --series-1: #2a78d6; --series-1-soft: #a9c8ef; --series-2: #eb6834; --grid: #e7e5e4; --ink-2: #52514e; }
+  :root { --series-1: #9f1239; --series-1-soft: #fda4af; --series-2: #f97316; --grid: #e7e5e4; --ink-2: #52514e; }
   body { background: #f8fafc; }
   .fade-in { animation: fadein .2s ease-out; }
   @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
@@ -21,7 +21,7 @@
   .tg-msg { white-space: pre-line; }
   .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
   .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-  input[type=range] { accent-color: #7c3aed; }
+  input[type=range] { accent-color: #be123c; }
 </style>
 </head>
 <body class="text-slate-900 font-sans antialiased">
@@ -271,7 +271,7 @@ const SEGMENTS = {
   attention: { label: 'Needs attention', chip: 'bg-amber-100 text-amber-800',     play: 'A gentle nudge on their favourite category.' },
   at_risk:   { label: 'At risk',         chip: 'bg-orange-100 text-orange-800',   play: 'Win them back before they leave. This is where a discount pays off most.' },
   lost:      { label: 'Lost',            chip: 'bg-rose-100 text-rose-800',       play: 'One win-back try, then stop messaging.' },
-  bargain:   { label: 'Bargain hunters', chip: 'bg-violet-100 text-violet-800',   play: 'Flat ₹ off above a minimum order protects margin.' },
+  bargain:   { label: 'Bargain hunters', chip: 'bg-pink-100 text-pink-800',   play: 'Flat ₹ off above a minimum order protects margin.' },
 };
 const SEG_KEYS = Object.keys(SEGMENTS);
 
@@ -909,7 +909,7 @@ const kpi = (label, value, sub = '', extra = '') => `<div class="bg-white rounde
 const segChip = s => `<span class="inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${SEGMENTS[s].chip}">${SEGMENTS[s].label}</span>`;
 const outChip = o => `<span class="inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${OUTCOMES[o].chip}">${OUTCOMES[o].label}</span>`;
 const btn = (label, onclick, kind = 'primary', extra = '') => {
-  const k = { primary: 'bg-violet-600 hover:bg-violet-700 text-white', ghost: 'bg-white hover:bg-slate-50 border border-slate-300 text-slate-700', soft: 'bg-violet-50 hover:bg-violet-100 text-violet-700' }[kind];
+  const k = { primary: 'bg-brand-600 hover:bg-brand-700 text-white', ghost: 'bg-white hover:bg-slate-50 border border-slate-300 text-slate-700', soft: 'bg-brand-50 hover:bg-brand-100 text-brand-700' }[kind];
   return `<button type="button" onclick="${onclick}" class="rounded-xl px-3.5 py-2 text-sm font-medium transition ${k} ${extra}">${label}</button>`;
 };
 function describeOffer(o) {
@@ -1018,7 +1018,7 @@ function filteredCustomers() {
 }
 function custTable() {
   const list = filteredCustomers(), size = 25, page = Math.min(state.page, Math.max(0, Math.ceil(list.length / size) - 1));
-  const rows = list.slice(page * size, page * size + size).map(c => `<tr class="border-t border-slate-100 hover:bg-violet-50/50 cursor-pointer" onclick="openCustomer('${c.id}')">
+  const rows = list.slice(page * size, page * size + size).map(c => `<tr class="border-t border-slate-100 hover:bg-brand-50/50 cursor-pointer" onclick="openCustomer('${c.id}')">
     <td class="py-2.5 pr-3"><div class="font-medium">${esc(c.name)}</div><div class="text-xs text-slate-500">${esc(c.city)} · ${LANGS[c.lang]}</div></td>
     <td class="py-2.5 pr-3">${segChip(c.seg)}</td>
     <td class="py-2.5 pr-3 whitespace-nowrap">${ago(c.recency)}</td>
@@ -1034,10 +1034,10 @@ function custTable() {
 }
 function viewCustomers() {
   const counts = Object.fromEntries(SEG_KEYS.map(s => [s, STATS.seg[s].n]));
-  const chip = (k, label, n) => `<button type="button" onclick="setSeg('${k}')" class="rounded-full px-3 py-1 text-sm border ${state.seg === k ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}">${label} <span class="opacity-70 tabular-nums">${num(n)}</span></button>`;
+  const chip = (k, label, n) => `<button type="button" onclick="setSeg('${k}')" class="rounded-full px-3 py-1 text-sm border ${state.seg === k ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}">${label} <span class="opacity-70 tabular-nums">${num(n)}</span></button>`;
   return `${pageHead('Customers', 'Every synthetic shopper with what the engine knows about them. Click a row to see their history.')}
   ${card(`<div class="flex flex-wrap gap-2 items-center">
-      <input type="search" value="${esc(state.q)}" oninput="state.q=this.value;state.page=0;document.getElementById('custTable').innerHTML=custTable()" placeholder="Search name, city or ID" class="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+      <input type="search" value="${esc(state.q)}" oninput="state.q=this.value;state.page=0;document.getElementById('custTable').innerHTML=custTable()" placeholder="Search name, city or ID" class="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
       <label class="text-sm text-slate-600 flex items-center gap-2">Sort by
         <select onchange="state.sort=this.value;state.page=0;document.getElementById('custTable').innerHTML=custTable()" class="rounded-xl border border-slate-300 px-2 py-2 text-sm">
           ${[['value', 'Spend (12 months)'], ['risk', 'Risk of leaving'], ['recent', 'Most recent order'], ['cart', 'Open cart value']].map(([v, l]) => `<option value="${v}" ${state.sort === v ? 'selected' : ''}>${l}</option>`).join('')}
@@ -1067,14 +1067,14 @@ function openCustomer(id) {
       <div><div class="text-xl font-bold">${esc(c.name)}</div><div class="text-sm text-slate-500 mt-0.5">${c.id} · ${c.age} · ${esc(c.city)} (tier ${c.tier} city) · reads ${LANGS[c.lang]}</div><div class="mt-2 flex flex-wrap gap-1.5">${segChip(c.seg)}${c.cart ? '<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs">🛒 Open cart</span>' : ''}${c.optedOut ? '<span class="rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-xs">Stopped offers</span>' : ''}</div></div>
       ${btn('Close', 'closeDrawer()', 'ghost')}
     </div>
-    <div class="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm"><span class="font-semibold">Why ${SEGMENTS[c.seg].label}:</span> ${esc(whySegment(c))}<div class="text-violet-800 mt-1">${SEGMENTS[c.seg].play}</div></div>
+    <div class="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm"><span class="font-semibold">Why ${SEGMENTS[c.seg].label}:</span> ${esc(whySegment(c))}<div class="text-brand-800 mt-1">${SEGMENTS[c.seg].play}</div></div>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
       ${stat('Last order', ago(c.recency))}${stat('Orders (12 mo)', c.f365)}${stat('Spend (12 mo)', inr(c.m365))}${stat('Average order', inr(c.aov))}
       ${stat('Usually orders every', c.total >= 2 ? `${c.usualGap} days` : '–')}${stat('Risk of leaving', riskLabel(c.churn))}${stat('Coupon use', c.discAff == null ? '–' : pct(c.discAff))}${stat('Returns', c.total ? pct(c.returnRate) : '–')}
       ${stat('Points', num(c.points))}${stat('Visits (30 days)', c.sessions30)}${stat('Usually online', hourLabel(c.activeHour))}${stat('Member for', `${c.signupAgo} days`)}
     </div>
     ${catTot ? `<h3 class="font-semibold mt-5 mb-2">Where they spend</h3><div class="space-y-1.5">${c.topCats.slice(0, 4).map(k => `<div class="flex items-center gap-2 text-sm"><span class="w-32 shrink-0">${CATS[k].name}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${c.catSpend[k] / catTot * 100}%"></div></div><span class="w-12 text-right tabular-nums text-xs">${pct(c.catSpend[k] / catTot)}</span></div>`).join('')}</div>` : ''}
-    ${dec ? `<h3 class="font-semibold mt-5 mb-2">In the last campaign run</h3><div class="rounded-xl border border-slate-200 p-3 text-sm flex flex-wrap items-center gap-2">${outChip(dec.outcome)}${dec.final ? offerChip(dec.final) : ''}<span class="text-slate-500">${esc(decisionWhy(dec))}</span><button type="button" class="ml-auto text-violet-700 font-medium hover:underline" onclick="openDecision('${c.id}')">See the decision →</button></div>` : ''}
+    ${dec ? `<h3 class="font-semibold mt-5 mb-2">In the last campaign run</h3><div class="rounded-xl border border-slate-200 p-3 text-sm flex flex-wrap items-center gap-2">${outChip(dec.outcome)}${dec.final ? offerChip(dec.final) : ''}<span class="text-slate-500">${esc(decisionWhy(dec))}</span><button type="button" class="ml-auto text-brand-700 font-medium hover:underline" onclick="openDecision('${c.id}')">See the decision →</button></div>` : ''}
     <h3 class="font-semibold mt-5 mb-2">Timeline</h3>
     <ol class="relative border-l border-slate-200 ml-2">${ev.slice(0, 16).map(e => `<li class="ml-4 pb-3"><span class="absolute -left-2.5 grid place-items-center w-5 h-5 rounded-full bg-white border border-slate-200 text-[11px]">${e.icon}</span><div class="text-xs text-slate-500">${e.d < 0 ? 'Coming up' : ago(e.d)}</div><div class="text-sm">${esc(e.text)}</div></li>`).join('')}</ol>`);
 }
@@ -1101,7 +1101,7 @@ function ruleImpact(key) {
     case 'minGapDays': return `${count(c => c.lastOfferAgo < R.minGapDays)} customers got an offer in the last ${plural(R.minGapDays, 'day')} and will be skipped.`;
     case 'skipRecentDays': return `${count(c => c.recency != null && c.recency < R.skipRecentDays)} customers bought in the last ${plural(R.skipRecentDays, 'day')}; they don't need a nudge.`;
     case 'maxReturnPct': return `${count(c => c.total >= 3 && c.returnRate * 100 > R.maxReturnPct)} customers return more than ${R.maxReturnPct}% of their orders and will be skipped.`;
-    case 'holdoutPct': return `About ${count(c => inHoldout(c, R))} customers get nothing on purpose, so you can see what the offers really add.` + (LIVE.on ? ' Applies to campaigns; classmates testing the bot always get offers.' : '');
+    case 'holdoutPct': return `About ${count(c => inHoldout(c, R))} customers get nothing on purpose, so you can see what the offers really add.` + (LIVE.on ? ' Applies to campaigns; people trying the bot always get offers.' : '');
     case 'quiet': return `${count(c => isQuiet(c.activeHour, R))} customers are usually online during these hours; their messages are moved to the evening before.` + lastRun('quiet');
     case 'expiryDays': return 'Offers must end within this many days (and at least 2).' + lastRun('expiry');
     case 'maxChars': return 'Long messages get cut off on phones.' + lastRun('length');
@@ -1111,7 +1111,7 @@ function ruleImpact(key) {
 function slider(key, sentence, min, max, step, fmt = v => v) {
   const v = state.rules[key];
   return `<div class="py-3 border-b border-slate-100 last:border-0">
-    <div class="flex items-center justify-between gap-3"><label for="r-${key}" class="text-sm font-medium">${sentence}</label><span id="rv-${key}" class="font-semibold tabular-nums text-violet-700 whitespace-nowrap">${fmt(v)}</span></div>
+    <div class="flex items-center justify-between gap-3"><label for="r-${key}" class="text-sm font-medium">${sentence}</label><span id="rv-${key}" class="font-semibold tabular-nums text-brand-700 whitespace-nowrap">${fmt(v)}</span></div>
     <input id="r-${key}" type="range" min="${min}" max="${max}" step="${step}" value="${v}" class="w-full mt-2" oninput="setRule('${key}', this.valueAsNumber, this)">
     <p data-impact="${key}" class="text-xs text-slate-500 mt-1">${ruleImpact(key)}</p></div>`;
 }
@@ -1143,7 +1143,7 @@ function viewRules() {
   const hours = Array.from({ length: 24 }, (_, h) => h);
   const hourSel = key => `<select onchange="state.rules.${key}=+this.value;saveRules(state.rules);rulesTouched()" class="rounded-lg border border-slate-300 px-2 py-1 text-sm">${hours.map(h => `<option value="${h}" ${R[key] === h ? 'selected' : ''}>${hourLabel(h)}</option>`).join('')}</select>`;
   const grid = `<div class="overflow-x-auto scroll-thin"><table class="text-sm min-w-[760px] w-full"><thead><tr><th class="text-left py-2 pr-3 font-medium text-xs text-slate-500">Segment</th>${OFFER_KEYS.map(t => `<th class="py-2 px-1 font-medium text-xs text-slate-600 text-center w-20"><div class="text-base">${OFFERS[t].icon}</div>${OFFERS[t].short}</th>`).join('')}</tr></thead>
-    <tbody>${SEG_KEYS.map(sg => `<tr class="border-t border-slate-100"><td class="py-2 pr-3">${segChip(sg)}</td>${OFFER_KEYS.map(t => `<td class="text-center"><input type="checkbox" aria-label="${OFFERS[t].label} for ${SEGMENTS[sg].label}" class="w-4 h-4 accent-violet-600" ${R.grid[sg].includes(t) ? 'checked' : ''} onchange="toggleGrid('${sg}','${t}',this.checked)"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    <tbody>${SEG_KEYS.map(sg => `<tr class="border-t border-slate-100"><td class="py-2 pr-3">${segChip(sg)}</td>${OFFER_KEYS.map(t => `<td class="text-center"><input type="checkbox" aria-label="${OFFERS[t].label} for ${SEGMENTS[sg].label}" class="w-4 h-4 accent-brand-600" ${R.grid[sg].includes(t) ? 'checked' : ''} onchange="toggleGrid('${sg}','${t}',this.checked)"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   return `${pageHead('Offer rules', 'These limits apply to every offer. The AI only chooses inside them, and every AI choice is checked against them again before it is sent.', btn('Reset to defaults', 'resetRules()', 'ghost') + btn('Run with these rules', "runNow();go('run')"))}
   ${LIVE.on ? `<div class="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm"><b>Live:</b> these are the rules the Telegram bot uses. Changes save automatically and apply from the bot's next decision. <span id="liveSave">${saveStatusHtml()}</span></div>` : ''}
   <div id="rulesBanner" class="${state.rulesChanged ? '' : 'hidden'} mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex flex-wrap items-center gap-3"><span>Rules changed. Run the campaign again to see the effect.</span>${btn('Run campaign', "runNow();go('run')", 'primary', 'ml-auto')}</div>
@@ -1151,13 +1151,13 @@ function viewRules() {
     ${card(`${h2('💰 Money limits')}${s('maxPct', 'Never give more than this % off', 0, 50, 5)}${s('maxFlat', 'Never give more than this flat ₹ off', 0, 1000, 50)}${s('marginFloor', 'Every offer must leave at least this much margin', 0, 30, 1)}${s('budget', 'Campaign budget', 25000, 500000, 5000)}`)}
     ${card(`${h2('🔔 Don\'t over-message')}${s('maxPerWeek', 'At most this many offers per customer per week', 1, 5, 1)}${s('minGapDays', 'Wait at least this long between two offers', 0, 14, 1)}
       <div class="py-3 border-b border-slate-100"><div class="text-sm font-medium flex flex-wrap items-center gap-2">No messages between ${hourSel('quietFrom')} and ${hourSel('quietTo')}</div><p data-impact="quiet" class="text-xs text-slate-500 mt-1">${ruleImpact('quiet')}</p></div>
-      <label class="py-3 text-sm flex items-start gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 mt-0.5 accent-violet-600" ${R.cartOwnLimit ? 'checked' : ''} onchange="state.rules.cartOwnLimit=this.checked;saveRules(state.rules);rulesTouched()"><span>Cart reminders have their own limit: one per cart, even if the customer got an offer recently<span class="block text-xs text-slate-500 mt-0.5">Off: cart reminders also wait for the weekly limit and the gap between offers.</span></span></label>`)}
+      <label class="py-3 text-sm flex items-start gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 mt-0.5 accent-brand-600" ${R.cartOwnLimit ? 'checked' : ''} onchange="state.rules.cartOwnLimit=this.checked;saveRules(state.rules);rulesTouched()"><span>Cart reminders have their own limit: one per cart, even if the customer got an offer recently<span class="block text-xs text-slate-500 mt-0.5">Off: cart reminders also wait for the weekly limit and the gap between offers.</span></span></label>`)}
     ${card(`${h2('🚫 Who to leave out')}
       <div class="py-3 border-b border-slate-100 text-sm flex items-center gap-2"><input type="checkbox" checked disabled class="w-4 h-4"> Customers who tapped "Stop offers" <span class="text-xs text-slate-500">(always on)</span></div>
       ${s('skipRecentDays', 'Skip customers who bought in the last', 0, 14, 1)}${s('maxReturnPct', 'Skip customers who return more than', 10, 100, 5)}`)}
     ${card(`${h2('📏 Measure it', 'A holdout group gets nothing. Comparing them with everyone else shows what the offers really added.')}${s('holdoutPct', 'Keep this share of customers as a holdout', 0, 30, 1)}`)}
     ${card(`${h2('✍️ Message rules')}${s('expiryDays', 'Offers last at most', 2, 30, 1)}
-      <label class="py-3 border-b border-slate-100 text-sm flex items-center gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 accent-violet-600" ${R.requireExpiry ? 'checked' : ''} onchange="state.rules.requireExpiry=this.checked;saveRules(state.rules);rulesTouched()"> Every message must show its expiry date</label>
+      <label class="py-3 border-b border-slate-100 text-sm flex items-center gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 accent-brand-600" ${R.requireExpiry ? 'checked' : ''} onchange="state.rules.requireExpiry=this.checked;saveRules(state.rules);rulesTouched()"> Every message must show its expiry date</label>
       ${s('maxChars', 'Keep messages under', 150, 600, 10)}
       <div class="py-3"><div class="text-sm font-medium">Never use these words or phrases</div><div class="flex flex-wrap gap-1.5 mt-2">${R.banned.map((w, i) => `<span class="inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 text-xs">${esc(w)}<button type="button" aria-label="Remove ${esc(w)}" onclick="removeBanned(${i})" class="hover:text-rose-950">×</button></span>`).join('')}</div>
       <input type="text" placeholder="Add a word and press Enter" onkeydown="if(event.key==='Enter')addBanned(this)" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm"><p data-impact="banned" class="text-xs text-slate-500 mt-1"></p></div>`)}
@@ -1185,18 +1185,18 @@ function viewRun() {
   const bars = (obj, color) => { const e = Object.entries(obj).sort((a, b) => b[1] - a[1]); const mx = Math.max(1, ...e.map(x => x[1])); return e.length ? e.map(([k, n]) => `<div class="flex items-center gap-2 text-sm py-1"><span class="w-56 shrink-0 truncate" title="${esc(k)}">${esc(k)}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:${color};width:${n / mx * 100}%"></div></div><span class="w-10 text-right tabular-nums">${num(n)}</span></div>`).join('') : '<p class="text-sm text-slate-500">None.</p>'; };
   const list = D.filter(d => state.runFilter === 'all' || d.outcome === state.runFilter || (state.runFilter === 'notsent' && (d.outcome === 'blocked' || d.outcome === 'budget')));
   const size = 25, page = Math.min(state.runPage, Math.max(0, Math.ceil(list.length / size) - 1));
-  const rows = list.slice(page * size, page * size + size).map(d => `<tr class="border-t border-slate-100 hover:bg-violet-50/50 cursor-pointer" onclick="openDecision('${d.c.id}')">
+  const rows = list.slice(page * size, page * size + size).map(d => `<tr class="border-t border-slate-100 hover:bg-brand-50/50 cursor-pointer" onclick="openDecision('${d.c.id}')">
     <td class="py-2.5 pr-3"><div class="font-medium">${esc(d.c.name)}</div><div class="text-xs text-slate-500">${esc(d.c.city)} · ${LANGS[d.c.lang]}</div></td>
     <td class="py-2.5 pr-3">${segChip(d.c.seg)}</td><td class="py-2.5 pr-3">${outChip(d.outcome)}</td>
     <td class="py-2.5 pr-3">${d.final ? offerChip(d.final) : '<span class="text-slate-400">–</span>'}</td>
     <td class="py-2.5 pr-3 text-right tabular-nums">${d.final ? inr(d.final.cost) : '–'}</td>
     <td class="py-2.5 pr-3 whitespace-nowrap">${d.final ? sendLabel(d.final) : '–'}</td>
     <td class="py-2.5 text-slate-600 text-xs min-w-[18rem]">${esc(decisionWhy(d))}</td></tr>`).join('');
-  const tile = (k, label, n, sub) => `<button type="button" onclick="state.runFilter='${k}';state.runPage=0;render()" class="text-left bg-white rounded-2xl border p-4 hover:border-violet-400 ${state.runFilter === k ? 'border-violet-500 ring-2 ring-violet-200' : 'border-slate-200'}"><div class="text-sm text-slate-500">${label}</div><div class="text-2xl font-bold mt-1 tabular-nums">${num(n)}</div><div class="text-xs text-slate-500 mt-1">${sub}</div></button>`;
+  const tile = (k, label, n, sub) => `<button type="button" onclick="state.runFilter='${k}';state.runPage=0;render()" class="text-left bg-white rounded-2xl border p-4 hover:border-brand-400 ${state.runFilter === k ? 'border-brand-500 ring-2 ring-brand-200' : 'border-slate-200'}"><div class="text-sm text-slate-500">${label}</div><div class="text-2xl font-bold mt-1 tabular-nums">${num(n)}</div><div class="text-xs text-slate-500 mt-1">${sub}</div></button>`;
   const steps = [['1', 'Customer rules', 'Opted out, bought recently, too many offers, high returns: skipped.'], ['2', 'Holdout', `${run.rules.holdoutPct}% kept out to measure results.`], ['3', 'AI picks', 'From the allowed offers only, with value, time and message.'], ['4', 'Rule check', 'Every pick is checked again. Problems go back to the AI once.'], ['5', 'Send', 'Passed: sent. Still failing: safe default or nothing.']];
   return `${pageHead('Run offers', 'One campaign run: for every customer, which offer, why, and whether the rules let it through.', `<span class="text-xs text-slate-500">${state.rulesChanged ? '<span class="text-amber-700 font-medium">Rules changed since this run.</span>' : 'Using the current rules.'}</span>` + btn('Run campaign again', "runNow();render()"))}
   <div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 mb-4"><b>The AI is simulated in this prototype.</b> It makes the kinds of mistakes a real model makes (late-night send times, discounts on low-margin categories, the wrong language, a missing expiry date, an over-eager phrase) so you can see the rule checker catch every one.</div>
-  <ol class="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-4">${steps.map(([n, t, d]) => `<li class="bg-white rounded-xl border border-slate-200 p-3"><div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-violet-600 text-white text-xs grid place-items-center font-semibold">${n}</span><span class="font-semibold text-sm">${t}</span></div><p class="text-xs text-slate-500 mt-1.5">${d}</p></li>`).join('')}</ol>
+  <ol class="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-4">${steps.map(([n, t, d]) => `<li class="bg-white rounded-xl border border-slate-200 p-3"><div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-brand-600 text-white text-xs grid place-items-center font-semibold">${n}</span><span class="font-semibold text-sm">${t}</span></div><p class="text-xs text-slate-500 mt-1.5">${d}</p></li>`).join('')}</ol>
   <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
     ${tile('all', 'All customers', D.length, `${inr(run.spent)} of ${inr(run.rules.budget)} budget committed`)}
     ${tile('sent', 'Sent as the AI chose', cnt('sent'), 'passed every rule first time')}
@@ -1218,10 +1218,10 @@ function viewRun() {
 function runPageTo(p) { state.runPage = p; render(); }
 function openDecision(id) {
   const d = state.run.decisions.find(x => x.c.id === id), c = d.c;
-  const step = (n, title, body) => `<div class="mt-5"><div class="flex items-center gap-2 mb-2"><span class="w-6 h-6 rounded-full bg-violet-600 text-white text-xs grid place-items-center font-semibold">${n}</span><h3 class="font-semibold">${title}</h3></div><div class="ml-8">${body}</div></div>`;
+  const step = (n, title, body) => `<div class="mt-5"><div class="flex items-center gap-2 mb-2"><span class="w-6 h-6 rounded-full bg-brand-600 text-white text-xs grid place-items-center font-semibold">${n}</span><h3 class="font-semibold">${title}</h3></div><div class="ml-8">${body}</div></div>`;
   const offerBox = o => `<div class="rounded-xl border border-slate-200 p-3 text-sm space-y-1"><div class="flex flex-wrap gap-2 items-center">${offerChip(o)}<span class="text-slate-500">${sendLabel(o)} · costs up to ${inr(o.cost)} · ${LANGS[scriptLang(o.text)]}</span></div><div class="text-slate-600"><b>AI's reason:</b> ${esc(o.reason)}</div><div class="whitespace-pre-line rounded-lg bg-slate-50 p-2 text-[13px]">${esc(o.text)}</div></div>`;
   let body = `<div class="flex items-start justify-between gap-3"><div><div class="text-xl font-bold">${esc(c.name)}</div><div class="mt-1 flex flex-wrap gap-1.5 items-center">${segChip(c.seg)}${outChip(d.outcome)}<span class="text-sm text-slate-500">${OUTCOMES[d.outcome].help}</span></div></div>${btn('Close', 'closeDrawer()', 'ghost')}</div>
-    <button type="button" class="mt-2 text-sm text-violet-700 font-medium hover:underline" onclick="openCustomer('${c.id}')">Open customer profile →</button>`;
+    <button type="button" class="mt-2 text-sm text-brand-700 font-medium hover:underline" onclick="openCustomer('${c.id}')">Open customer profile →</button>`;
   body += step(1, 'Customer rules', checkList(d.pre));
   if (d.outcome === 'holdout') body += step(2, 'Holdout', `<p class="text-sm text-slate-600">This customer was picked at random for the holdout group. Nothing is sent; their buying is compared with everyone else's.</p>`);
   if (d.first) {
@@ -1260,19 +1260,19 @@ function viewTelegram() {
   const time = hourLabel(o.sendHour).replace(' ', ':00 ').toUpperCase();
   const stopped = state.tg.stopped === c.id && state.tg.chat.length;
   const bubble = (html, t = time) => `<div class="max-w-[85%] bg-white rounded-2xl rounded-bl-md px-3 py-2 shadow-sm text-[14px] leading-snug"><div class="tg-msg">${html}</div><div class="text-[11px] text-slate-400 text-right mt-0.5">${t}</div></div>`;
-  const listHtml = cands.slice(0, 60).map(x => `<button type="button" onclick="tgPick('${x.c.id}')" class="w-full text-left px-3 py-2 rounded-xl ${x.c.id === c.id ? 'bg-violet-50 ring-1 ring-violet-300' : 'hover:bg-slate-50'}"><div class="flex items-center justify-between gap-2"><span class="font-medium text-sm truncate">${esc(x.c.name)}</span>${outChip(x.outcome)}</div><div class="text-xs text-slate-500 truncate">${OFFERS[x.final.type].icon} ${esc(describeOffer(x.final))} · ${LANGS[x.c.lang]}</div></button>`).join('');
-  return `${pageHead('Telegram preview', 'Exactly what a customer sees in the bot. Classmates who start the real bot get a synthetic shopper profile and offers picked for it.')}
+  const listHtml = cands.slice(0, 60).map(x => `<button type="button" onclick="tgPick('${x.c.id}')" class="w-full text-left px-3 py-2 rounded-xl ${x.c.id === c.id ? 'bg-brand-50 ring-1 ring-brand-300' : 'hover:bg-slate-50'}"><div class="flex items-center justify-between gap-2"><span class="font-medium text-sm truncate">${esc(x.c.name)}</span>${outChip(x.outcome)}</div><div class="text-xs text-slate-500 truncate">${OFFERS[x.final.type].icon} ${esc(describeOffer(x.final))} · ${LANGS[x.c.lang]}</div></button>`).join('');
+  return `${pageHead('Telegram preview', 'Exactly what a customer sees in the bot. Everyone who starts the real bot gets a synthetic shopper profile and offers picked for it.')}
   <div class="grid lg:grid-cols-[20rem_1fr] gap-4 items-start">
     <div class="space-y-4 min-w-0">
       ${card(`${h2('Pick a customer', `${num(cands.length)} customers got an offer in the last run`)}<input type="search" value="${esc(state.tg.q)}" oninput="state.tg.q=this.value;render();const i=document.getElementById('tgSearch');i.focus();i.setSelectionRange(i.value.length,i.value.length)" id="tgSearch" placeholder="Search name or city" class="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"><div class="mt-2 max-h-80 overflow-y-auto scroll-thin space-y-1">${listHtml || '<p class="text-sm text-slate-500 p-2">No match.</p>'}</div>`)}
-      ${card(`${h2('Why this offer')}<div class="mt-2 space-y-2 text-sm"><div class="flex flex-wrap gap-1.5">${segChip(c.seg)}${outChip(d.outcome)}</div><div>${offerChip(o)}</div><p class="text-slate-600">${esc(o.reason)}</p><p class="text-slate-500 text-xs">Sends ${sendLabel(o).toLowerCase()} · costs up to ${inr(o.cost)} if used · ${failed(d.finalChecks).length ? '' : 'passed all 9 message and offer checks'}</p>${d.fixes.length ? `<div class="rounded-lg bg-amber-50 border border-amber-200 p-2 text-xs"><b>Fixed by the rule checker:</b><ul class="list-disc ml-4 mt-1">${d.fixes.map(f => `<li>${esc(f)}</li>`).join('')}</ul></div>` : ''}<button type="button" class="text-violet-700 font-medium hover:underline" onclick="openDecision('${c.id}')">See the full decision →</button></div>`)}
+      ${card(`${h2('Why this offer')}<div class="mt-2 space-y-2 text-sm"><div class="flex flex-wrap gap-1.5">${segChip(c.seg)}${outChip(d.outcome)}</div><div>${offerChip(o)}</div><p class="text-slate-600">${esc(o.reason)}</p><p class="text-slate-500 text-xs">Sends ${sendLabel(o).toLowerCase()} · costs up to ${inr(o.cost)} if used · ${failed(d.finalChecks).length ? '' : 'passed all 9 message and offer checks'}</p>${d.fixes.length ? `<div class="rounded-lg bg-amber-50 border border-amber-200 p-2 text-xs"><b>Fixed by the rule checker:</b><ul class="list-disc ml-4 mt-1">${d.fixes.map(f => `<li>${esc(f)}</li>`).join('')}</ul></div>` : ''}<button type="button" class="text-brand-700 font-medium hover:underline" onclick="openDecision('${c.id}')">See the full decision →</button></div>`)}
     </div>
     <div class="min-w-0">
-      <div class="flex justify-center gap-1 mb-3" role="group" aria-label="Message language">${Object.entries({ en: 'English', hi: 'हिंदी', pa: 'ਪੰਜਾਬੀ' }).map(([k, l]) => `<button type="button" onclick="tgLang('${k}')" class="rounded-full px-3 py-1 text-sm border ${lang === k ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-300'}">${l}${k === c.lang ? ' ★' : ''}</button>`).join('')}</div>
+      <div class="flex justify-center gap-1 mb-3" role="group" aria-label="Message language">${Object.entries({ en: 'English', hi: 'हिंदी', pa: 'ਪੰਜਾਬੀ' }).map(([k, l]) => `<button type="button" onclick="tgLang('${k}')" class="rounded-full px-3 py-1 text-sm border ${lang === k ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-300'}">${l}${k === c.lang ? ' ★' : ''}</button>`).join('')}</div>
       <p class="text-center text-xs text-slate-500 mb-3">★ the customer's own language (always used when sending)</p>
       <div class="mx-auto w-full max-w-[380px] rounded-[2.2rem] bg-slate-900 p-2.5 shadow-xl">
         <div class="rounded-[1.8rem] overflow-hidden bg-white">
-          <div class="bg-[#517da2] text-white px-4 py-3 flex items-center gap-3"><span aria-hidden="true">←</span><div class="w-9 h-9 rounded-full bg-violet-500 grid place-items-center font-bold text-sm">BK</div><div><div class="font-semibold leading-tight">BazaarKart Offers</div><div class="text-xs text-white/75">bot</div></div></div>
+          <div class="bg-[#517da2] text-white px-4 py-3 flex items-center gap-3"><span aria-hidden="true">←</span><div class="w-9 h-9 rounded-full bg-brand-500 grid place-items-center font-bold text-sm">BK</div><div><div class="font-semibold leading-tight">BazaarKart Offers</div><div class="text-xs text-white/75">bot</div></div></div>
           <div id="tgChat" class="tg-bg h-[540px] overflow-y-auto scroll-thin p-3 space-y-2 flex flex-col">
             <div class="self-center rounded-full bg-black/20 text-white text-xs px-3 py-0.5">${sendLabel(o).split(',')[0]}</div>
             <div class="self-end max-w-[80%] bg-[#effdde] rounded-2xl rounded-br-md px-3 py-2 shadow-sm text-[14px]">/start<div class="text-[11px] text-emerald-700/70 text-right">${time}</div></div>
@@ -1305,10 +1305,10 @@ function viewResults() {
   const gMax = Math.max(1, ...ev.groupRows.flatMap(g => [g.ai, g.blanket]));
   const pts = v => `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)} pts`;
   return `${pageHead('Results', 'Did the offers make money? Simulated for the 14 days after sending, using each synthetic customer\'s hidden buying behaviour. Profit also counts future orders from customers won back from leaving.', state.rulesChanged ? `<span class="text-xs text-amber-700 font-medium">Rules changed since this run.</span>${btn('Run again', 'runNow();render()')}` : '')}
-  <div class="rounded-2xl bg-gradient-to-r from-violet-600 to-violet-500 text-white p-5 md:p-6">
-    <div class="text-sm text-violet-100">Extra profit from this campaign (expected, after discounts)</div>
+  <div class="rounded-2xl bg-gradient-to-r from-brand-800 via-brand-700 to-orange-600 text-white p-5 md:p-6">
+    <div class="text-sm text-brand-100">Extra profit from this campaign (expected, after discounts)</div>
     <div class="text-4xl font-bold mt-1 tabular-nums">${inr(inc)}</div>
-    <div class="text-sm text-violet-100 mt-1">${num(ev.T.length)} offers sent · ${inc > 0 && cost > 0 ? `every ₹1 given away in discounts came back as ₹${(inc / cost).toFixed(2)} of extra profit` : 'the discounts cost more than they brought in'}</div>
+    <div class="text-sm text-brand-100 mt-1">${num(ev.T.length)} offers sent · ${inc > 0 && cost > 0 ? `every ₹1 given away in discounts came back as ₹${(inc / cost).toFixed(2)} of extra profit` : 'the discounts cost more than they brought in'}</div>
   </div>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
     ${kpi('Bought within 14 days', `${pct(m.cT)} vs ${pct(m.cH)}`, `offered vs holdout (${pts(m.up)})`)}
@@ -1404,7 +1404,7 @@ const LIVE_STATUS = {
   cancelled: ['Cancelled', 'bg-slate-100 text-slate-500'],
 };
 const SOURCES = {
-  ai:       ['AI', 'bg-violet-100 text-violet-800', 'Claude chose it and it passed every rule first time.'],
+  ai:       ['AI', 'bg-brand-700 text-white', 'Claude chose it and it passed every rule first time.'],
   ai_retry: ['AI, after a fix', 'bg-amber-100 text-amber-800', 'The rule checker refused Claude\'s first choice; Claude fixed it and it passed.'],
   rules:    ['Rules', 'bg-slate-200 text-slate-700', 'The rule-based engine chose it (AI off, unreachable, or its choice broke the rules twice).'],
 };
@@ -1453,24 +1453,24 @@ function viewLive() {
       <div class="h-2 mt-1.5 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${total ? (L.by_source[k] || 0) / total * 100 : 0}%"></div></div><p class="text-xs text-slate-500 mt-1">${SOURCES[k][2]}</p></div>`).join('');
   const typeMax = Math.max(1, ...Object.values(L.by_type));
   const typeRows = Object.entries(L.by_type).sort((a, b) => b[1] - a[1]).map(([t, n]) => `<div class="flex items-center gap-2 text-sm py-1"><span class="w-48 shrink-0 truncate">${OFFERS[t].icon} ${OFFERS[t].label}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${n / typeMax * 100}%"></div></div><span class="w-8 text-right tabular-nums">${n}</span></div>`).join('');
-  const rows = L.recent.map(o => `<tr class="border-t border-slate-100 hover:bg-violet-50/50 cursor-pointer" onclick="openLiveOffer(${o.id})">
+  const rows = L.recent.map(o => `<tr class="border-t border-slate-100 hover:bg-brand-50/50 cursor-pointer" onclick="openLiveOffer(${o.id})">
       <td class="py-2.5 pr-3 whitespace-nowrap text-slate-600">${fmtWhen(o.at)}</td><td class="py-2.5 pr-3">${shopperCell(o.shopper)}</td>
       <td class="py-2.5 pr-3">${o.shopper.seg ? segChip(o.shopper.seg) : ''}</td>
       <td class="py-2.5 pr-3"><span class="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">${OFFERS[o.type].icon} ${esc(o.summary)}</span></td>
       <td class="py-2.5 pr-3">${chipOf(SOURCES[o.source])}</td><td class="py-2.5 pr-3">${chipOf(LIVE_STATUS[o.status])}</td>
       <td class="py-2.5 text-right tabular-nums">${inr(o.cost)}</td></tr>`).join('');
-  return `${pageHead('Live bot', `What classmates get from ${bot ? '@' + esc(bot) : 'the bot'}, as it happens. Updates every 10 seconds.`,
-      (link ? `<a href="${link}" target="_blank" rel="noopener" class="rounded-xl px-3.5 py-2 text-sm font-medium bg-violet-600 hover:bg-violet-700 text-white">Open the bot</a>` : '') + btn('Refresh', 'refreshLive().then(render)', 'ghost'))}
+  return `${pageHead('Live bot', `What customers get from ${bot ? '@' + esc(bot) : 'the bot'}, as it happens. Updates every 10 seconds.`,
+      (link ? `<a href="${link}" target="_blank" rel="noopener" class="rounded-xl px-3.5 py-2 text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white">Open the bot</a>` : '') + btn('Refresh', 'refreshLive().then(render)', 'ghost'))}
     ${LIVE.error ? `<div class="mb-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">${esc(LIVE.error)}</div>` : ''}
-    <div class="mb-4 flex flex-wrap gap-2 text-sm"><span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1">● Bot running</span><span class="rounded-full ${LIVE.info.ai_model ? 'bg-violet-100 text-violet-800' : 'bg-slate-200 text-slate-700'} px-3 py-1">${LIVE.info.ai_model ? `AI: ${esc(LIVE.info.ai_model)} chooses within the rules` : 'AI off: rule-based offers'}</span></div>
+    <div class="mb-4 flex flex-wrap gap-2 text-sm"><span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1">● Bot running</span><span class="rounded-full ${LIVE.info.ai_model ? 'bg-brand-100 text-brand-800' : 'bg-slate-200 text-slate-700'} px-3 py-1">${LIVE.info.ai_model ? `AI: ${esc(LIVE.info.ai_model)} chooses within the rules` : 'AI off: rule-based offers'}</span></div>
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
-      ${kpi('Classmates', num(L.classmates || 0), `${num(L.stopped_users || 0)} stopped offers`)}
+      ${kpi('Subscribers', num(L.subscribers || 0), `started the bot · ${num(L.stopped_users || 0)} stopped offers`)}
       ${kpi('Offers sent', num(L.delivered || 0), L.queued ? `${num(L.queued)} waiting for morning` : 'all delivered')}
       ${kpi('Claimed', pctOf(L.claim_rate), `${num(L.claimed || 0)} of ${num(L.delivered || 0)} offers`)}
       ${kpi('Stopped after an offer', pctOf(L.stop_rate), `${num(L.stopped || 0)} · ${num(L.later || 0)} said "not now"`)}
       ${kpi('Budget used', inr(L.spent || 0), `of ${inr(L.budget || 0)}, counting every offer at full cost`)}
     </div>
-    ${!L.recent.length ? card(`${h2('No offers yet')}<p class="text-sm text-slate-600 mt-2">Share the bot with classmates${link ? `: <a class="text-violet-700 font-medium" href="${link}" target="_blank" rel="noopener">${link}</a>` : ''}. A Telegram bot can only message people who have started it.</p>`, 'mt-4') : `
+    ${!L.recent.length ? card(`${h2('No offers yet')}<p class="text-sm text-slate-600 mt-2">Share the bot link with customers${link ? `: <a class="text-brand-700 font-medium" href="${link}" target="_blank" rel="noopener">${link}</a>` : ''}. A Telegram bot can only message people who have started it.</p>`, 'mt-4') : `
     <div class="grid lg:grid-cols-2 gap-4 mt-4">
       ${card(`${h2('Who chose each offer', 'Every AI choice is checked against the rules before it is sent.')}<div class="mt-2 divide-y divide-slate-100">${srcRows}</div>`)}
       ${card(`${h2('Offers sent, by type')}<div class="mt-3">${typeRows}</div>`)}
@@ -1484,14 +1484,14 @@ function viewLog() {
   const F = { all: () => true, sent: d => d.outcome === 'offer', notsent: d => d.outcome !== 'offer', fixed: d => d.source === 'ai_retry', fallback: d => d.source === 'rules' && d.ai_attempts.length };
   const labels = { all: 'All', sent: 'Offer made', notsent: 'Not sent', fixed: 'AI fixed after a refusal', fallback: 'AI refused twice → rules' };
   const list = all.filter(F[LIVE.logFilter]);
-  const chip = k => `<button type="button" onclick="LIVE.logFilter='${k}';render()" class="rounded-full px-3 py-1 text-sm border ${LIVE.logFilter === k ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}">${labels[k]} <span class="opacity-70 tabular-nums">${all.filter(F[k]).length}</span></button>`;
-  const rows = list.map((d, i) => `<tr class="border-t border-slate-100 align-top ${d.ai_attempts.length ? 'hover:bg-violet-50/50 cursor-pointer' : ''}" ${d.ai_attempts.length ? `onclick="openLogEntry(${all.indexOf(d)})"` : ''}>
+  const chip = k => `<button type="button" onclick="LIVE.logFilter='${k}';render()" class="rounded-full px-3 py-1 text-sm border ${LIVE.logFilter === k ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}">${labels[k]} <span class="opacity-70 tabular-nums">${all.filter(F[k]).length}</span></button>`;
+  const rows = list.map((d, i) => `<tr class="border-t border-slate-100 align-top ${d.ai_attempts.length ? 'hover:bg-brand-50/50 cursor-pointer' : ''}" ${d.ai_attempts.length ? `onclick="openLogEntry(${all.indexOf(d)})"` : ''}>
       <td class="py-2.5 pr-3 whitespace-nowrap text-slate-600">${fmtWhen(d.at)}</td><td class="py-2.5 pr-3 whitespace-nowrap">${esc(TRIGGERS[d.trigger] || d.trigger)}</td>
       <td class="py-2.5 pr-3">${shopperCell(d.shopper)}</td>
       <td class="py-2.5 pr-3">${d.outcome === 'offer' ? chipOf(['Offer made', 'bg-emerald-100 text-emerald-800']) : chipOf(['Not sent', 'bg-rose-100 text-rose-800'])}</td>
       <td class="py-2.5 pr-3">${d.outcome === 'offer' || d.ai_attempts.length ? chipOf(SOURCES[d.source]) : ''}</td>
       <td class="py-2.5 text-xs text-slate-600 min-w-[18rem]">${d.offer ? `<b class="text-slate-800">${esc(d.offer)}</b> · ` : ''}${esc(d.outcome === 'offer' ? d.reason : (d.failed[0]?.detail || d.reason))}${d.ai_attempts.some(a => a.failed?.length) ? `<div class="text-amber-700 mt-0.5">Checker refused: ${esc(d.ai_attempts.flatMap(a => (a.failed || []).map(f => f.detail)).join(' · '))}</div>` : ''}</td></tr>`).join('');
-  return `${pageHead('Decision log', 'Every time the engine decided for a classmate, including when nothing was sent and why. Newest first.', btn('Refresh', 'refreshLive().then(render)', 'ghost'))}
+  return `${pageHead('Decision log', 'Every time the engine decided for a customer, including when nothing was sent and why. Newest first.', btn('Refresh', 'refreshLive().then(render)', 'ghost'))}
     ${card(`<div class="flex flex-wrap gap-2">${Object.keys(F).map(chip).join('')}</div>
       <div class="overflow-x-auto scroll-thin mt-3"><table class="w-full text-sm min-w-[900px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">When</th><th class="py-2 pr-3 font-medium">Trigger</th><th class="py-2 pr-3 font-medium">Shopper</th><th class="py-2 pr-3 font-medium">Result</th><th class="py-2 pr-3 font-medium">Chosen by</th><th class="py-2 font-medium">Offer and reason</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="6" class="py-8 text-center text-slate-500">Nothing here yet.</td></tr>'}</tbody></table></div>`)}`;
@@ -1518,7 +1518,7 @@ const VIEWS = {
 function go(screen) { state.screen = screen; closeDrawer(); render(); window.scrollTo(0, 0); try { history.replaceState(null, '', '#' + screen); } catch (e) { /* file:// may block */ } }
 function render() {
   clearCharts();
-  const navBtn = ([k, v]) => `<button type="button" onclick="go('${k}')" class="shrink-0 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap ${state.screen === k ? 'bg-violet-50 text-violet-700' : 'text-slate-600 hover:bg-slate-50'}" ${state.screen === k ? 'aria-current="page"' : ''}><span aria-hidden="true">${v.icon}</span>${v.label}</button>`;
+  const navBtn = ([k, v]) => `<button type="button" onclick="go('${k}')" class="shrink-0 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap ${state.screen === k ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'}" ${state.screen === k ? 'aria-current="page"' : ''}><span aria-hidden="true">${v.icon}</span>${v.label}</button>`;
   const entries = Object.entries(VIEWS);
   document.getElementById('nav').innerHTML = LIVE.on
     ? entries.filter(([, v]) => v.live).map(navBtn).join('') + entries.filter(([k]) => k === 'rules').map(navBtn).join('')
@@ -1536,7 +1536,7 @@ function render() {
 }
 document.getElementById('app').innerHTML = `<div class="min-h-screen md:flex">
   <aside class="bg-white border-b md:border-b-0 md:border-r border-slate-200 md:w-60 md:shrink-0 md:h-screen md:sticky md:top-0 flex flex-col">
-    <div class="px-4 pt-3 pb-2 md:py-5 flex items-center gap-2.5"><div class="w-9 h-9 rounded-xl bg-violet-600 text-white grid place-items-center text-lg" aria-hidden="true">🎁</div><div><div class="font-bold leading-tight">Peshkash</div><div class="text-xs text-slate-500 leading-tight">Offer engine · BazaarKart</div></div></div>
+    <div class="px-4 pt-3 pb-2 md:py-5 flex items-center gap-2.5"><div class="w-9 h-9 rounded-xl bg-brand-600 text-white grid place-items-center text-lg" aria-hidden="true">🎁</div><div><div class="font-bold leading-tight">Peshkash</div><div class="text-xs text-slate-500 leading-tight">Offer engine · BazaarKart</div></div></div>
     <nav id="nav" aria-label="Screens" class="flex md:flex-col gap-1 px-2 md:px-3 pb-2 overflow-x-auto scroll-thin"></nav>
     <div id="footNote" class="hidden md:block mt-auto p-4 text-xs text-slate-500 border-t border-slate-200"></div>
   </aside>

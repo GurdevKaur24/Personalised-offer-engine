@@ -37,7 +37,7 @@ class OfferBot:
         self.chooser = chooser                               # the AI (Claude); None means rule-based offers only
         self._rules = rules
         self.by_id = {c["id"]: c for c in customers}
-        # Profiles handed to classmates: shoppers who would get an offer today, grouped by segment for variety.
+        # Profiles handed to bot users: shoppers who would get an offer today, grouped by segment for variety.
         r = self.rules()
         self.pool: dict[str, list[str]] = {}
         for c in customers:
@@ -73,7 +73,7 @@ class OfferBot:
         self.store.assign(chat_id, any_id, self.clock())
 
     def live_view(self, chat_id: int) -> dict:
-        """The synthetic shopper as the engine sees them now, with this classmate's live activity added."""
+        """The synthetic shopper as the engine sees them now, with this bot user's live activity added."""
         u, now = self.store.user(chat_id), self.clock()
         c = dict(self.by_id[u["customer_id"]])
         c["lang"] = u["lang"] or c["lang"]

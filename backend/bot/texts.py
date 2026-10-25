@@ -25,8 +25,8 @@ def ago(days: int | None, lang: str) -> str:
 
 T = {
     "en": {
-        "welcome": "Welcome to <b>BazaarKart Offers</b> 🛍️\nThis is a class project (Hackathon 2). Nothing here is real: you play a made-up shopper, "
-                   "there are no payments, and we only keep your chat id and the buttons you tap.\n\nHere is your shopper:",
+        "welcome": "Welcome to <b>BazaarKart Offers</b> 🛍️\nThis is a demo store: you shop as one of our sample customers, with no real orders or "
+                   "payments. We only keep your chat id and the buttons you tap.\n\nHere is your shopper:",
         "profile": "👤 <b>{name}</b> · {age} · {city}\n🏷️ Type: {seg}\n🛍️ {orders} orders in 12 months · last order {last}\n"
                    "❤️ Likes: {likes}\n⭐ Points: {points}",
         "cart_line": "\n🛒 In cart: {items}",
@@ -53,8 +53,8 @@ T = {
         "unknown": "Sorry, I only understand the buttons and commands. Send /help to see them.",
     },
     "hi": {
-        "welcome": "<b>BazaarKart Offers</b> में आपका स्वागत है 🛍️\nयह एक क्लास प्रोजेक्ट (हैकाथॉन 2) है। यहाँ कुछ भी असली नहीं है: आप एक काल्पनिक ग्राहक हैं, "
-                   "कोई भुगतान नहीं होता, और हम सिर्फ़ आपकी चैट आईडी और दबाए गए बटन रखते हैं।\n\nयह है आपका ग्राहक:",
+        "welcome": "<b>BazaarKart Offers</b> में आपका स्वागत है 🛍️\nयह एक डेमो स्टोर है: आप हमारे एक नमूना ग्राहक के रूप में ख़रीदारी करते हैं, "
+                   "कोई असली ऑर्डर या भुगतान नहीं होता। हम सिर्फ़ आपकी चैट आईडी और दबाए गए बटन रखते हैं।\n\nयह है आपका ग्राहक:",
         "profile": "👤 <b>{name}</b> · {age} · {city}\n🏷️ प्रकार: {seg}\n🛍️ 12 महीनों में {orders} ऑर्डर · आख़िरी ऑर्डर {last}\n"
                    "❤️ पसंद: {likes}\n⭐ पॉइंट्स: {points}",
         "cart_line": "\n🛒 कार्ट में: {items}",
@@ -81,8 +81,8 @@ T = {
         "unknown": "माफ़ कीजिए, मैं सिर्फ़ बटन और कमांड समझता हूँ। देखने के लिए /help भेजें।",
     },
     "pa": {
-        "welcome": "<b>BazaarKart Offers</b> ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ 🛍️\nਇਹ ਇੱਕ ਕਲਾਸ ਪ੍ਰੋਜੈਕਟ (ਹੈਕਾਥੌਨ 2) ਹੈ। ਇੱਥੇ ਕੁਝ ਵੀ ਅਸਲੀ ਨਹੀਂ: ਤੁਸੀਂ ਇੱਕ ਕਾਲਪਨਿਕ ਗਾਹਕ ਹੋ, "
-                   "ਕੋਈ ਭੁਗਤਾਨ ਨਹੀਂ ਹੁੰਦਾ, ਅਤੇ ਅਸੀਂ ਸਿਰਫ਼ ਤੁਹਾਡੀ ਚੈਟ ਆਈਡੀ ਅਤੇ ਦੱਬੇ ਬਟਨ ਰੱਖਦੇ ਹਾਂ।\n\nਇਹ ਹੈ ਤੁਹਾਡਾ ਗਾਹਕ:",
+        "welcome": "<b>BazaarKart Offers</b> ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ 🛍️\nਇਹ ਇੱਕ ਡੈਮੋ ਸਟੋਰ ਹੈ: ਤੁਸੀਂ ਸਾਡੇ ਇੱਕ ਨਮੂਨਾ ਗਾਹਕ ਵਜੋਂ ਖ਼ਰੀਦਦਾਰੀ ਕਰਦੇ ਹੋ, "
+                   "ਕੋਈ ਅਸਲੀ ਆਰਡਰ ਜਾਂ ਭੁਗਤਾਨ ਨਹੀਂ ਹੁੰਦਾ। ਅਸੀਂ ਸਿਰਫ਼ ਤੁਹਾਡੀ ਚੈਟ ਆਈਡੀ ਅਤੇ ਦੱਬੇ ਬਟਨ ਰੱਖਦੇ ਹਾਂ।\n\nਇਹ ਹੈ ਤੁਹਾਡਾ ਗਾਹਕ:",
         "profile": "👤 <b>{name}</b> · {age} · {city}\n🏷️ ਕਿਸਮ: {seg}\n🛍️ 12 ਮਹੀਨਿਆਂ ਵਿੱਚ {orders} ਆਰਡਰ · ਆਖ਼ਰੀ ਆਰਡਰ {last}\n"
                    "❤️ ਪਸੰਦ: {likes}\n⭐ ਪੁਆਇੰਟ: {points}",
         "cart_line": "\n🛒 ਕਾਰਟ ਵਿੱਚ: {items}",

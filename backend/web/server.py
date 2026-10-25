@@ -4,13 +4,13 @@ GET  /                 the app page (prototype/index.html), which switches to li
 GET  /api/status       bot, AI model and data size
 GET  /api/rules        the rules the bot uses now
 PUT  /api/rules        save new rules (refused with plain-English problems if any value is out of range)
-GET  /api/live         live results: classmates, offers, claims, stops, budget, and the latest offers
+GET  /api/live         live results: subscribers, offers, claims, stops, budget, and the latest offers
 GET  /api/decisions    the decision log: every time the engine decided, including when nothing was sent
 GET  /health           "ok" for uptime monitors (no password; says nothing about the data)
 
 On this computer it listens on 127.0.0.1 with no password. When hosted (public), every page and API call needs the
 password from PESHKASH_PAGE_PASSWORD (browser sign-in box); without one set, the page stays locked.
-Classmates are shown only as the synthetic shopper they play.
+Bot users are shown only as the sample customer they shop as.
 """
 import base64
 import binascii
@@ -79,7 +79,7 @@ class Api:
     def live(self, limit: int = 100) -> tuple[int, dict]:
         db = self._db()
         rules = load_rules(self.rules_path)
-        empty = {"classmates": 0, "stopped_users": 0, "offers": 0, "delivered": 0, "queued": 0, "claimed": 0, "later": 0,
+        empty = {"subscribers": 0, "stopped_users": 0, "offers": 0, "delivered": 0, "queued": 0, "claimed": 0, "later": 0,
                  "stopped": 0, "no_answer": 0, "claim_rate": None, "stop_rate": None, "spent": 0, "budget": rules.budget,
                  "by_source": {}, "by_type": {}, "recent": []}
         if db is None:
@@ -102,7 +102,7 @@ class Api:
                 "ai_attempts": d.get("ai_attempts") or [],
             })
         return 200, {
-            "classmates": users[0], "stopped_users": users[1], "offers": len(live_rows), "delivered": delivered,
+            "subscribers": users[0], "stopped_users": users[1], "offers": len(live_rows), "delivered": delivered,
             "queued": status["queued"], "claimed": status["claimed"], "later": status["later"], "stopped": status["stopped"],
             "no_answer": status["sent"],
             "claim_rate": status["claimed"] / delivered if delivered else None,

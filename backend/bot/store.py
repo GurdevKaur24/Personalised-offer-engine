@@ -1,6 +1,6 @@
 """Live bot state in SQLite: who started the bot, which synthetic shopper they are, offers, carts and an audit log.
 
-Only the Telegram chat id is kept about a classmate; no names or usernames.
+Only the Telegram chat id is kept about a bot user; no names or usernames.
 """
 import json
 import sqlite3

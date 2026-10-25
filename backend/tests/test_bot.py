@@ -1,4 +1,4 @@
-"""The bot, driven through a fake Telegram: every message a classmate would see, and every rule on the live path."""
+"""The bot, driven through a fake Telegram: every message a customer would see, and every rule on the live path."""
 import json
 from datetime import datetime, timedelta
 
@@ -188,7 +188,7 @@ def test_buying_cancels_the_reminder_and_pauses_offers(make_bot):
     assert len(offers(bot, 1)) == 2
 
 
-def test_classmates_get_different_shoppers_of_varied_types(make_bot):
+def test_each_user_gets_a_different_shopper_of_varied_types(make_bot):
     bot, api, _ = make_bot()
     for chat in range(1, 15):
         join(bot, api, chat)

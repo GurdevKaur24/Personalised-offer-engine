@@ -48,7 +48,7 @@ def test_bad_rules_are_refused_and_nothing_changes(world):
     assert web.put_rules(["not", "rules"])[0] == 400
 
 
-def test_live_results_count_what_classmates_did(world):
+def test_live_results_count_what_users_did(world):
     bot, api_t, _, web, _ = world
     for chat in (1, 2, 3):
         join(bot, api_t, chat)
@@ -56,14 +56,14 @@ def test_live_results_count_what_classmates_did(world):
     bot.handle(tap(1, f"claim:{o1['id']}"))
     bot.handle(tap(2, f"stop:{o2['id']}"))
     code, live = web.live()
-    assert code == 200 and live["classmates"] == 3 and live["stopped_users"] == 1
+    assert code == 200 and live["subscribers"] == 3 and live["stopped_users"] == 1
     assert (live["delivered"], live["claimed"], live["stopped"], live["no_answer"]) == (3, 1, 1, 1)
     assert live["claim_rate"] == pytest.approx(1 / 3) and live["by_source"] == {"rules": 3}
     first = live["recent"][-1]
     assert first["shopper"]["name"] and first["shopper"]["seg_label"] and first["checks"] and first["status"] == "claimed"
 
 
-def test_classmates_chat_ids_never_reach_the_page(world):
+def test_users_chat_ids_never_reach_the_page(world):
     bot, api_t, _, web, _ = world
     join(bot, api_t, 987654321)
     page_data = json.dumps([web.live()[1], web.decisions()[1]])

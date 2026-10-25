@@ -13,7 +13,7 @@ grocery, sports). All customer data is synthetic.
 | User | What they do |
 |---|---|
 | Marketing manager | Sets the rules (limits, budget, who may get what), runs campaigns, reads results |
-| Customer (classmate on Telegram) | Starts the bot, gets a synthetic shopper profile, receives offers, claims or ignores them |
+| Customer on Telegram (anyone who starts the bot) | Starts the bot, gets a synthetic shopper profile, receives offers, claims or ignores them |
 | Platform owner | Watches the audit log: what the AI chose, what the rules blocked and why |
 
 ## The core idea

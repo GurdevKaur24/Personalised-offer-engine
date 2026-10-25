@@ -33,7 +33,7 @@ Bot: **@BazaarKartOffers_bot**. User-facing setup and usage: `README.md`; hostin
     order must be stated. "language" looks only at the two written lines.
 - **backend/bot/**: the Telegram bot, standard library only (urllib long polling; no python-telegram-bot).
   - `app.py` (`OfferBot`): behaviour, testable with a fake Telegram. `handle(update)` + `tick()` (queued offers,
-    cart reminders). Each classmate gets a synthetic shopper; their live offers, carts and orders are added on top
+    cart reminders). Each bot user gets a synthetic shopper; their live offers, carts and orders are added on top
     (`live_view`). Queued offers are re-checked before sending. Rules are re-read from `data/rules.json` each time.
   - `store.py`: SQLite `data/live.db` (git-ignored): users (chat id only), profiles, offers, carts, live orders, events (audit log).
   - `texts.py`: everything the bot says in en/hi/pa. `telegram.py`: tiny Bot API client. `main.py`: the runner.
@@ -67,7 +67,7 @@ cd backend; .\.venv\Scripts\python -m bot.main   # bot + marketer page on http:/
 1. Nothing is sent unless the rule checker passes it. The checker is the source of truth for "safe to send".
 2. The AI only sees allowed offers; its output is still re-checked (type, value, margin floor, budget, caps, message).
 3. Opted-out customers never get a message, and nothing is sent during quiet hours (offers wait and are re-checked
-   before sending). In campaigns, holdout customers get nothing; classmates testing the bot are never held out
+   before sending). In campaigns, holdout customers get nothing; people trying the bot are never held out
    (`use_holdout=False` in `bot/app.py`).
 4. Every decision is logged with its reason (sent, fixed, blocked, holdout).
 

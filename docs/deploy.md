@@ -1,6 +1,6 @@
 # Keeping the bot and the marketer page running all the time (Render, free)
 
-Render runs the bot and the marketer page in the cloud, so classmates can use the bot while your laptop is off.
+Render runs the bot and the marketer page in the cloud, so people can use the bot while your laptop is off.
 The free plan goes to sleep after about 15 minutes with no visits to the page, so a free uptime monitor visits
 `/health` every 5 minutes to keep it awake.
 

@@ -184,7 +184,7 @@ Command options: `python -m bot.main --cart-minutes 5` (cart reminder delay), `-
 ## Using the marketer page
 | Screen | What it shows |
 |---|---|
-| **Live bot** | Classmates using the bot, offers sent, claim and stop rates, budget used, who chose each offer (Claude, Claude after the checker refused its first choice, or the rules), and the latest offers. Click an offer to see the exact message, Claude's reason, what it first proposed and every rule check. |
+| **Live bot** | Subscribers (people who started the bot), offers sent, claim and stop rates, budget used, who chose each offer (Claude, Claude after the checker refused its first choice, or the rules), and the latest offers. Click an offer to see the exact message, Claude's reason, what it first proposed and every rule check. |
 | **Decision log** | Every decision, including the ones where nothing was sent and why. Filters for AI fixes and fallbacks. |
 | **Rules** | The bot's real rules, as sliders and toggles. Changes save automatically; bad values are refused with an explanation. |
 | Overview, Customers, Run offers, Telegram preview, Results | A simulation on 1,500 made-up shoppers in the browser: segments, realism checks, a full campaign run and the strategy comparison. |
@@ -239,14 +239,14 @@ CLAUDE.md              project notes for Claude Code
 ---
 
 ## Privacy and safety
-- Only synthetic shoppers. Classmates using the bot are stored only as a Telegram chat id, linked to the made-up
-  shopper they play; no names or usernames are kept, and chat ids never reach the marketer page.
+- Only synthetic shoppers. People using the bot are stored only as a Telegram chat id, linked to the sample
+  customer they shop as; no names or usernames are kept, and chat ids never reach the marketer page.
 - The bot token and API key live only in `.env` (git-ignored) or the host's secret settings.
 - The hosted marketer page needs a password; without one it stays locked. `/health` shows nothing but "ok".
 
 ## Limitations
 - On Render's free plan, live results, the decision log and rule changes reset when the service restarts.
-- With only a few classmates, live claim rates are too small a sample to judge the offers; the simulation and the
+- With only a few bot users, live claim rates are too small a sample to judge the offers; the simulation and the
   holdout explain how a real platform would measure them.
 - Not built yet: an approval queue for large offers, a preview of what a rule change would cost, and coupon-abuse
   signals (see [docs/requirements.md](docs/requirements.md)).
