@@ -187,11 +187,11 @@ Command options: `python -m bot.main --cart-minutes 5` (cart reminder delay), `-
 |---|---|
 | **Live bot** | Subscribers (people who started the bot), offers sent, claim and stop rates, budget used, who chose each offer (Claude, Claude after the checker refused its first choice, or the rules), and the latest offers. Click an offer to see the exact message, Claude's reason, what it first proposed and every rule check. |
 | **Decision log** | Every decision, including the ones where nothing was sent and why. Filters for AI fixes and fallbacks. |
-| **Rules** | The bot's real rules, as sliders and toggles. Changes save automatically; bad values are refused with an explanation. |
+| **Rules** | The bot's real rules, as sliders and toggles. A **preview** shows what a change would do before it is saved: who gets an offer, who is left out, budget, average discount, AI picks the checker had to fix and expected profit (a campaign simulated before and after). Then **Save** sends it to the bot; bad values are refused with an explanation. |
 | Overview, Customers, Run offers, Telegram preview, Results | A simulation on 1,500 made-up shoppers in the browser: segments, realism checks, a full campaign run and the strategy comparison. |
 
-Example: on **Rules**, move quiet hours to start at 11 pm, then send `/newprofile` to the bot at 10 pm. The offer
-now arrives at once instead of the next morning.
+Example: on **Rules**, raise the biggest % discount to 30%. The preview shows how many more % offers would go out and
+what that does to the budget and profit; click **Save and use in the bot** to apply it, or **Discard changes**.
 
 ---
 
@@ -249,5 +249,5 @@ CLAUDE.md              project notes for Claude Code
 - On Render's free plan, live results, the decision log and rule changes reset when the service restarts.
 - With only a few bot users, live claim rates are too small a sample to judge the offers; the simulation and the
   holdout explain how a real platform would measure them.
-- Not built yet: an approval queue for large offers, a preview of what a rule change would cost, and coupon-abuse
-  signals (see [docs/requirements.md](docs/requirements.md)).
+- Not built yet: an approval queue for large offers and coupon-abuse signals (see
+  [docs/requirements.md](docs/requirements.md)).

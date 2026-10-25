@@ -46,6 +46,8 @@ Bot: **@BazaarKartOffers_bot**. User-facing setup and usage: `README.md`; hostin
   `PESHKASH_DATA_DIR` moves `data/`. Only one copy of the bot may poll Telegram (409 Conflict otherwise).
 - **prototype/index.html live mode**: when `/api/status` answers, the page adds "Live bot" and "Decision log", and the
   Rules screen loads/saves the bot's rules (camelCase in the page ↔ snake_case on the server: `toServer`/`fromServer`).
+  Rule edits are a draft (`state.rules`) until Save (`state.savedRules`); the preview panel runs the simulated campaign
+  with both (`summarise`) and shows the difference. Live mode saves only on Save (`commitRules` → `PUT /api/rules`).
   The other screens stay a simulation on 1,500 in-browser shoppers and are labelled so.
 
 ## Run

@@ -73,7 +73,8 @@ vs "AI within rules".
 
 ## Advanced (roadmap)
 - Uplift groups: sure things / persuadables / lost causes / do-not-disturb
-- Rule-change preview ("raise max discount to 25%: 140 more customers qualify, cost +₹38k")
+- ✅ Rule-change preview on the Rules screen (changes listed, then offers, people left out, budget, average discount,
+  AI fixes and expected profit, before and after; nothing saved until Save)
 - Budget-aware allocation across customers; offer fatigue; festival calendar
 - Hindi/Punjabi messages; message A/B variants
 - Approval queue for high-value offers
@@ -87,4 +88,4 @@ vs "AI within rules".
 5. ✅ Telegram bot (start, profile, offers with buttons, cart flow, stop); offers come from the Claude agent.
 6. ✅ The bot serves the page in live mode: rules editing, live results and the decision log from real bot events.
 7. ✅ Hosting setup for Render (password-protected page, health check, deploy guide).
-8. Advanced features (rule-change preview, approval queue, coupon-abuse signals).
+8. Advanced features: ✅ rule-change preview; not yet: approval queue, coupon-abuse signals.
