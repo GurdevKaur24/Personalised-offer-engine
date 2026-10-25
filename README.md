@@ -143,8 +143,8 @@ You need **Python 3.12**, a Telegram bot token (from [@BotFather](https://t.me/B
 for the AI, an Anthropic API key. Without the key the bot still works with rule-based offers.
 
 ```
-git clone <this repository>
-cd peshkash
+git clone https://github.com/GurdevKaur24/Personalised-offer-engine.git
+cd Personalised-offer-engine
 copy .env.example .env          # macOS/Linux: cp .env.example .env
 ```
 Open `.env` and fill in `TELEGRAM_BOT_TOKEN=` and `ANTHROPIC_API_KEY=` (never commit this file; it is git-ignored).
