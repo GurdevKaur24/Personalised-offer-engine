@@ -1625,7 +1625,8 @@ function openBot() {
         <div class="rounded-xl border border-slate-200 p-5 flex flex-col">
           <div class="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 grid place-items-center">${icon('monitor', 'w-5 h-5')}</div>
           <h3 class="font-semibold mt-3">On this computer</h3>
-          <p class="text-sm text-slate-500 mt-1 flex-1">Opens Telegram in your browser. If it asks you to sign in, scan the code it shows with Telegram on your phone, and the bot chat opens. If it doesn't, search <b class="text-slate-700">@${esc(bot)}</b>.</p>
+          <p class="text-sm text-slate-500 mt-1 flex-1">Use Telegram in your browser, no app needed. Sign in to your Telegram account if it asks, then the chat with the bot opens.</p>
+          <p class="text-xs text-slate-400 mt-2">Chat didn't open? Search <b class="text-slate-600">@${esc(bot)}</b> in Telegram.</p>
           <a href="${web}" target="_blank" rel="noopener" onclick="closeDrawer()" class="mt-4 inline-flex items-center justify-center gap-1.5 rounded-lg h-10 text-sm font-medium shadow-sm bg-brand-600 hover:bg-brand-700 text-white">${icon('external', 'w-4 h-4')}Open Telegram Web</a>
           <a href="${app}" target="_blank" rel="noopener" onclick="closeDrawer()" class="mt-2.5 text-center text-xs text-slate-500 hover:text-slate-800 underline underline-offset-2">Have the Telegram app on this computer? Open it there</a>
         </div>
@@ -1633,7 +1634,7 @@ function openBot() {
           <div class="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 grid place-items-center self-start">${icon('phone', 'w-5 h-5')}</div>
           <h3 class="font-semibold mt-3 self-start">On your phone</h3>
           ${qr ? `<div class="w-40 h-40 mt-3 p-2 rounded-lg border border-slate-200 bg-white [&>svg]:w-full [&>svg]:h-full" aria-label="QR code for t.me/${esc(bot)}" role="img">${qr}</div>` : ''}
-          <p class="text-sm text-slate-500 mt-3">Scan with your phone's camera. The bot opens in the Telegram app.</p>
+          <p class="text-sm text-slate-500 mt-3">Point your phone's camera at this code. The bot opens in your Telegram app.</p>
           <a href="${app}" target="_blank" rel="noopener" class="mt-1 text-xs text-brand-700 font-medium">t.me/${esc(bot)}</a>
         </div>
       </div>
