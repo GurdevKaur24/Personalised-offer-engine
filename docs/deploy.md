@@ -37,9 +37,9 @@ the logs say "Another copy of this bot is running".
 2. `/health` needs no password and shows no data; it only answers "ok".
 
 ## 5. Check it
-- Open `https://<your-service>.onrender.com`. The browser asks for a user name and password: type anything as the
-  user name and your `PESHKASH_PAGE_PASSWORD` as the password. You should see **Live bot**.
-- Send `/start` to the bot in Telegram. The offer appears on the Live bot screen within 10 seconds.
+- Open `https://<your-service>.onrender.com`. The sign-in page asks for the password: use your
+  `PESHKASH_PAGE_PASSWORD`. You should see the **Dashboard**.
+- Send `/start` to the bot in Telegram. The offer appears on the Dashboard within 10 seconds.
 
 ## Good to know
 - **Data resets on restart.** The free plan has no permanent disk, so live results, the decision log and any rule

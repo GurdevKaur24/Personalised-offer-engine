@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Peshkash</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%239f1239'/%3E%3Cpath d='M9 14h14v10a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1z M8 11h16v3H8z M16 11v14' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M16 11c-2-4-6-4-6-1.5S13 11 16 11c3 0 6-.5 6-1.5S18 7 16 11z' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: Inter, system-ui, sans-serif; color: #0f172a; background: #f8fafc; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
+  .brand { background: radial-gradient(120% 90% at 0% 0%, #be123c 0%, #9f1239 45%, #4c0519 100%); color: #fff; padding: 56px 64px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+  .brand::after { content: ""; position: absolute; right: -120px; bottom: -120px; width: 420px; height: 420px; border-radius: 50%; background: radial-gradient(circle, rgba(249,115,22,.45), rgba(249,115,22,0) 70%); }
+  .logo { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 20px; letter-spacing: -.01em; }
+  .mark { width: 40px; height: 40px; border-radius: 11px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); display: grid; place-items: center; }
+  .brand h1 { font-size: 40px; line-height: 1.12; letter-spacing: -.025em; margin: 0 0 16px; max-width: 460px; font-weight: 700; }
+  .brand p.lead { font-size: 16px; line-height: 1.6; color: rgba(255,255,255,.82); max-width: 440px; margin: 0 0 28px; }
+  .points { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; position: relative; z-index: 1; }
+  .points li { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; color: rgba(255,255,255,.92); }
+  .points svg { flex: none; margin-top: 2px; }
+  .foot { font-size: 13px; color: rgba(255,255,255,.6); position: relative; z-index: 1; }
+  .panel { display: grid; place-items: center; padding: 40px 24px; }
+  .card { width: 100%; max-width: 380px; }
+  .card h2 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 6px; }
+  .card .sub { color: #64748b; margin: 0 0 28px; font-size: 15px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+  .field { position: relative; }
+  input[type=password] { width: 100%; height: 46px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 14px; font: inherit; font-size: 15px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+  input[type=password]:focus { outline: none; border-color: #be123c; box-shadow: 0 0 0 4px rgba(190,18,60,.12); }
+  button { margin-top: 16px; width: 100%; height: 46px; border: 0; border-radius: 10px; background: #be123c; color: #fff; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; transition: background .15s; }
+  button:hover { background: #9f1239; }
+  .error { margin: 0 0 16px; padding: 10px 12px; border-radius: 10px; background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; font-size: 14px; }
+  .note { margin-top: 22px; font-size: 13px; color: #94a3b8; line-height: 1.5; }
+  @media (max-width: 860px) {
+    body { grid-template-columns: 1fr; }
+    .brand { padding: 32px 24px; }
+    .brand h1 { font-size: 28px; }
+    .points, .foot, .brand::after { display: none; }
+    .brand p.lead { margin-bottom: 0; }
+  }
+</style>
+</head>
+<body>
+  <section class="brand">
+    <div class="logo">
+      <span class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span>
+      Peshkash
+    </div>
+    <div>
+      <h1>The right offer, for the right customer, at the right time.</h1>
+      <p class="lead">The offer engine behind BazaarKart's Telegram offers. Your rules set the limits; AI picks and writes each offer inside them; every choice is checked before it is sent.</p>
+      <ul class="points">
+        <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Live results and a full decision log for every offer</li>
+        <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Rules in plain English, with a preview before you save</li>
+        <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Offers in English, हिंदी and ਪੰਜਾਬੀ</li>
+      </ul>
+    </div>
+    <div class="foot">BazaarKart demo store · synthetic customer data</div>
+  </section>
+  <main class="panel">
+    <form class="card" method="post" action="/login">
+      <h2>Sign in</h2>
+      <p class="sub">Marketer console for @{{bot}}</p>
+      {{error}}
+      <label for="password">Password</label>
+      <div class="field"><input id="password" name="password" type="password" autocomplete="current-password" required autofocus></div>
+      <button type="submit">Sign in</button>
+      <p class="note">Access is for the marketing team. You stay signed in on this device for 7 days.</p>
+    </form>
+  </main>
+</body>
+</html>

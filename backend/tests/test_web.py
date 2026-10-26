@@ -106,37 +106,110 @@ def test_the_real_server_serves_the_page_and_the_api(world):
         server.shutdown()
 
 
-def _get(url, password=None):
-    req = urllib.request.Request(url)
-    if password is not None:
-        import base64
-        req.add_header("Authorization", "Basic " + base64.b64encode(f"marketing:{password}".encode()).decode())
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+OPEN = urllib.request.build_opener(NoRedirect)
+
+
+def _call(url, cookie=None, data=None, method=None):
+    req = urllib.request.Request(url, data=data, method=method)
+    if cookie:
+        req.add_header("Cookie", cookie)
     try:
-        with urllib.request.urlopen(req) as r:
-            return r.status, r.read()
+        with OPEN.open(req) as r:
+            return r.status, r.headers, r.read()
     except urllib.error.HTTPError as e:
-        return e.code, e.read()
+        return e.code, e.headers, e.read()
 
 
-@pytest.mark.parametrize("password, public, expect", [
-    (None, False, {"none": 200}),                                   # on this computer: no password
-    ("s3cret!", True, {"none": 401, "wrong": 401, "right": 200}),   # hosted with a password
-    (None, True, {"none": 503, "right": 503}),                      # hosted without one: locked
-])
-def test_hosted_page_needs_the_password_but_health_never_does(tmp_path, customers, password, public, expect):
-    web = Api(tmp_path, PAGE, customers[:10], password=password, public=public)
-    server = serve(web, port=0)
-    base = f"http://127.0.0.1:{server.server_address[1]}"
-    try:
-        tries = {"none": None, "wrong": "nope", "right": password or "x"}
-        for who, code in expect.items():
-            for path in ("/", "/api/live", "/api/rules"):
-                assert _get(base + path, tries[who])[0] == code, (who, path)
-        assert _get(base + "/health") == (200, b'{"ok": true}')
-        if password:
-            put = urllib.request.Request(base + "/api/rules", data=b"{}", method="PUT")
-            with pytest.raises(urllib.error.HTTPError) as e:
-                urllib.request.urlopen(put)
-            assert e.value.code == 401 and not (tmp_path / "rules.json").exists()
-    finally:
-        server.shutdown()
+def _sign_in(base, password):
+    code, headers, body = _call(base + "/login", data=f"password={password}".encode(), method="POST")
+    cookie = (headers.get("Set-Cookie") or "").split(";")[0]
+    return code, cookie, body
+
+
+@pytest.fixture
+def hosted(tmp_path, customers):
+    def start(password, public=True):
+        web = Api(tmp_path, PAGE, customers[:10], {"bot": "TestBot"}, password=password, public=public)
+        server = serve(web, port=0)
+        servers.append(server)
+        return f"http://127.0.0.1:{server.server_address[1]}"
+    servers = []
+    yield start
+    for s in servers:
+        s.shutdown()
+
+
+def test_on_this_computer_no_sign_in_is_needed(hosted):
+    base = hosted(None, public=False)
+    for path in ("/", "/api/live", "/api/rules", "/api/export.csv"):
+        assert _call(base + path)[0] == 200, path
+    assert _call(base + "/login")[0] == 303                       # nothing to sign in to
+
+
+def test_hosted_console_sends_strangers_to_the_sign_in_page(hosted):
+    base = hosted("s3cret!")
+    code, headers, _ = _call(base + "/")
+    assert code == 303 and headers["Location"] == "/login"
+    for path in ("/api/live", "/api/rules", "/api/decisions", "/api/export.csv"):
+        assert _call(base + path)[0] == 401, path
+    code, _, page = _call(base + "/login")
+    assert code == 200 and b"Sign in" in page and b"@TestBot" in page
+    assert _call(base + "/api/rules", data=b"{}", method="PUT")[0] == 401
+
+
+def test_the_right_password_gives_a_secure_session_and_sign_out_ends_it(hosted):
+    base = hosted("s3cret!")
+    code, cookie, _ = _sign_in(base, "wrong")
+    assert code == 401 and not cookie
+    code, headers, _ = _call(base + "/login", data=b"password=s3cret%21", method="POST")
+    set_cookie = headers["Set-Cookie"]
+    assert code == 303 and headers["Location"] == "/"
+    assert "HttpOnly" in set_cookie and "SameSite=Lax" in set_cookie and "Secure" in set_cookie and "s3cret" not in set_cookie
+    cookie = set_cookie.split(";")[0]
+    for path in ("/", "/api/live", "/api/rules"):
+        assert _call(base + path, cookie)[0] == 200, path
+    assert _call(base + "/login", cookie)[0] == 303                # already signed in
+    code, headers, _ = _call(base + "/logout", cookie)
+    assert code == 303 and "Max-Age=0" in headers["Set-Cookie"]
+    assert _call(base + "/api/live", "peshkash_session=forged")[0] == 401
+
+
+def test_too_many_wrong_passwords_are_slowed_down(hosted):
+    base = hosted("s3cret!")
+    for _ in range(10):
+        assert _sign_in(base, "nope")[0] == 401
+    code, _, body = _sign_in(base, "s3cret!")
+    assert code == 429 and b"Too many tries" in body
+
+
+def test_hosted_without_a_password_stays_locked_but_health_answers(hosted):
+    base = hosted(None)
+    for path in ("/", "/api/live", "/login"):
+        assert _call(base + path)[0] in (503, 303), path
+    assert _call(base + "/api/live")[0] == 503
+    assert _call(base + "/health")[:1] == (200,) and _call(base + "/health")[2] == b'{"ok": true}'
+
+
+def test_live_results_include_chart_data(world):
+    bot, api_t, clock, web, _ = world
+    for chat in (1, 2, 3):
+        join(bot, api_t, chat)
+    bot.handle(tap(1, f"claim:{offers(bot, 1)[0]['id']}"))
+    live = web.live()[1]
+    assert sum(sum(b[k] for k in ("claimed", "later", "no_answer", "stopped", "queued")) for b in live["timeline"]) == 3
+    assert sum(s["offers"] for s in live["by_segment"]) == 3 and sum(s["claimed"] for s in live["by_segment"]) == 1
+    assert live["by_trigger"] == {"start": 3} and live["by_language"] == {"en": 3}
+
+
+def test_csv_export_lists_every_offer_without_chat_ids(world):
+    bot, api_t, _, web, _ = world
+    join(bot, api_t, 987654321)
+    text = web.export_csv().decode("utf-8-sig")
+    lines = text.strip().splitlines()
+    assert lines[0].startswith("offer_id,created_at") and len(lines) == 2
+    assert "987654321" not in text and "chat" not in lines[0]

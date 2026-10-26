@@ -37,14 +37,20 @@ Bot: **@BazaarKartOffers_bot**. User-facing setup and usage: `README.md`; hostin
     (`live_view`). Queued offers are re-checked before sending. Rules are re-read from `data/rules.json` each time.
   - `store.py`: SQLite `data/live.db` (git-ignored): users (chat id only), profiles, offers, carts, live orders, events (audit log).
   - `texts.py`: everything the bot says in en/hi/pa. `telegram.py`: tiny Bot API client. `main.py`: the runner.
-- **backend/web/server.py**: the marketer page, standard library `ThreadingHTTPServer` on 127.0.0.1 (default port
+- **backend/web/server.py**: the marketer console, standard library `ThreadingHTTPServer` on 127.0.0.1 (default port
   8010, started by `bot.main`). Serves `prototype/index.html` and `/api/status`, `/api/rules` (GET/PUT; PUT validates
-  with `Rules.from_dict` and writes `data/rules.json`, which the bot re-reads every decision), `/api/live`,
-  `/api/decisions`. `Api` methods return `(status, dict)` so tests call them directly. Never sends chat ids.
-- **Hosting** (`render.yaml`, guide `docs/deploy.md`): when `PORT` is set the page listens on 0.0.0.0 and every route
-  except `/health` needs HTTP Basic auth with `PESHKASH_PAGE_PASSWORD` (locked with 503 if unset).
+  with `Rules.from_dict` and writes `data/rules.json`, which the bot re-reads every decision), `/api/live` (also chart
+  data: `timeline`, `by_segment`, `by_trigger`, `by_language`), `/api/decisions`, `/api/export.csv`. `Api` methods
+  return `(status, dict)` so tests call them directly. Never sends chat ids.
+  Sign-in (only with a password): `prototype/login.html` at `/login`, POST sets cookie `peshkash_session` (HMAC of the
+  password, HttpOnly, SameSite=Lax, Secure when hosted, 7 days); `/logout`; 10 wrong tries per address per 10 min → 429.
+- **Bot menu**: a persistent reply keyboard (`texts.T[lang]["menu"]`, `MENU_LAYOUT`, `MENU_COMMANDS`) maps buttons in
+  every language to commands; `/myoffers` lists active offers; codes are sent in `<code>` (tap to copy); bot
+  descriptions are set at startup.
+- **Hosting** (`render.yaml`, guide `docs/deploy.md`): when `PORT` is set the console listens on 0.0.0.0 and every
+  route except `/health` and `/login` needs a session from signing in with `PESHKASH_PAGE_PASSWORD` (locked with 503 if unset).
   `PESHKASH_DATA_DIR` moves `data/`. Only one copy of the bot may poll Telegram (409 Conflict otherwise).
-- **prototype/index.html live mode**: when `/api/status` answers, the page adds "Live bot" and "Decision log", and the
+- **prototype/index.html live mode**: when `/api/status` answers, the page adds "Dashboard" and "Decision log", and the
   Rules screen loads/saves the bot's rules (camelCase in the page ↔ snake_case on the server: `toServer`/`fromServer`).
   Rule edits are a draft (`state.rules`) until Save (`state.savedRules`); the preview panel runs the simulated campaign
   with both (`summarise`) and shows the difference. Live mode saves only on Save (`commitRules` → `PUT /api/rules`).

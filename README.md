@@ -19,24 +19,24 @@ are in [CLAUDE.md](CLAUDE.md).
 1. Open [@BazaarKartOffers_bot](https://t.me/BazaarKartOffers_bot) and tap **Start**.
 2. Pick **English, हिंदी or ਪੰਜਾਬੀ**. You get a made-up shopper to play (their city, orders, favourite categories,
    points and cart), then an offer picked for that shopper, with **Claim offer / Not now / Stop offers** buttons.
-3. Try the commands:
+3. Use the **menu buttons** under the chat (or type the commands):
 
-| Command | What happens |
-|---|---|
-| `/offer` | Ask for another offer. Usually refused politely: the rules wait 3 days between offers. |
-| `/newprofile` | Play a different shopper and get an offer for them. |
-| `/shop` | Add items to a cart. Leave the cart for 2 minutes and a cart reminder arrives. |
-| `/profile` | See your shopper again. |
-| `/stop` | Stop all offers (send `/start` to turn them back on). |
-| `/language` | Change language. |
+| Menu button | Command | What happens |
+|---|---|---|
+| ✨ Get an offer | `/offer` | Ask for another offer. Usually refused politely: the rules wait 3 days between offers. |
+| 🎁 My offers | `/myoffers` | Your active offers, with tap-to-copy codes and how long they last. |
+| 🛍️ Shop | `/shop` | Add items to a cart. Leave the cart for 2 minutes and a cart reminder arrives. |
+| 👤 My shopper | `/profile` | See your shopper again. |
+| 🔄 New shopper | `/newprofile` | Play a different shopper and get an offer for them. |
+| 🌐 Language | `/language` | Change language. |
+| ❓ Help | `/help` | What the bot can do. `/stop` stops all offers (`/start` turns them back on). |
 
 Offers asked for between 9 pm and 9 am wait until morning (quiet hours). That is a rule, not a bug.
 
 ### The marketer page
 While the bot runs, it also serves a page for the marketing team: the bot's live results, the decision log and the
-rules (which the bot uses from its next decision). Hosted at **https://peshkash.onrender.com** (it asks for a
-password: any user name, and the page password given with the submission). Locally it is at
-**http://localhost:8010**, with no password.
+rules (which the bot uses from its next decision). Hosted at **https://peshkash.onrender.com**: sign in with the
+page password given with the submission. Locally it is at **http://localhost:8010**, with no password.
 
 ### The clickable prototype
 Double-click `prototype/index.html`. It runs entirely in the browser (no setup) on 1,500 made-up shoppers, with a
@@ -185,10 +185,10 @@ Command options: `python -m bot.main --cart-minutes 5` (cart reminder delay), `-
 ## Using the marketer page
 | Screen | What it shows |
 |---|---|
-| **Live bot** | Subscribers (people who started the bot), offers sent, claim and stop rates, budget used, who chose each offer (Claude, Claude after the checker refused its first choice, or the rules), and the latest offers. Click an offer to see the exact message, Claude's reason, what it first proposed and every rule check. |
+| **Dashboard** | Subscribers (people who started the bot), offers sent, claim and opt-out rates, budget used; charts of offers over time (by outcome) and results by segment; who chose each offer (Claude, Claude after the checker refused its first choice, or the rules); offers by type, trigger and language; and the latest offers. Click an offer to see the exact message, Claude's reason, what it first proposed and every rule check. **Export CSV** downloads every offer as a spreadsheet (no chat ids). |
 | **Decision log** | Every decision, including the ones where nothing was sent and why. Filters for AI fixes and fallbacks. |
 | **Rules** | The bot's real rules, as sliders and toggles. A **preview** shows what a change would do before it is saved: who gets an offer, who is left out, budget, average discount, AI picks the checker had to fix and expected profit (a campaign simulated before and after). Then **Save** sends it to the bot; bad values are refused with an explanation. |
-| Overview, Customers, Run offers, Telegram preview, Results | A simulation on 1,500 made-up shoppers in the browser: segments, realism checks, a full campaign run and the strategy comparison. |
+| Overview, Customers, Campaign simulator, Message preview, Impact report | Planning on 1,500 simulated shoppers in the browser: segments, realism checks, a full campaign run and the strategy comparison. |
 
 Example: on **Rules**, raise the biggest % discount to 30%. The preview shows how many more % offers would go out and
 what that does to the budget and profit; click **Save and use in the bot** to apply it, or **Discard changes**.
@@ -203,7 +203,7 @@ on Render's free plan, and a free UptimeRobot monitor on `/health` keeps it awak
 ---
 
 ## Tests
-177 tests (`pytest`), all passing:
+192 tests (`pytest`), all passing:
 
 | File | What it proves |
 |---|---|
@@ -212,8 +212,8 @@ on Render's free plan, and a free UptimeRobot monitor on `/health` keeps it awak
 | `test_rules.py` | Bad rule values are refused in plain English and never saved. |
 | `test_engine.py` | Every campaign offer passes the checker, also under stricter rules. |
 | `test_agent.py` | With a fake Claude: limits, wrong amounts, wrong language, banned words and nonsense are all caught; a randomly misbehaving AI over 600 shoppers never gets a rule-breaking offer out. |
-| `test_bot.py` | The whole bot through a fake Telegram: start, claim, stop, quiet hours, cart reminders, budget, live rule changes, logging. |
-| `test_web.py` | The marketer page: saved rules change the bot, results add up, chat ids never reach the page, the password works. |
+| `test_bot.py` | The whole bot through a fake Telegram: start, menu buttons in every language, My offers, claim, stop, quiet hours, cart reminders, budget, live rule changes, logging. |
+| `test_web.py` | The marketer console: saved rules change the bot, results and chart data add up, CSV export, chat ids never reach the page, sign-in page, secure session cookie, sign-out and too-many-tries limit. |
 
 The tests never call the real Claude or Telegram, so they are free and run offline.
 
@@ -230,7 +230,7 @@ backend/
     agent.py       Claude chooses within the rules
   bot/           the Telegram bot (app.py behaviour, store.py SQLite, texts.py, main.py runner)
   web/           the marketer page server and its API
-  tests/         177 tests
+  tests/         192 tests
 prototype/index.html   the app page (live mode when served by the bot; demo mode as a file)
 docs/                  requirements.md (the full plan), deploy.md (hosting)
 render.yaml            hosting on Render
@@ -243,7 +243,8 @@ CLAUDE.md              project notes for Claude Code
 - Only synthetic shoppers. People using the bot are stored only as a Telegram chat id, linked to the sample
   customer they shop as; no names or usernames are kept, and chat ids never reach the marketer page.
 - The bot token and API key live only in `.env` (git-ignored) or the host's secret settings.
-- The hosted marketer page needs a password; without one it stays locked. `/health` shows nothing but "ok".
+- The hosted console has its own sign-in page (session cookie: HttpOnly, Secure, SameSite; wrong passwords are
+  rate-limited); without a password set it stays locked. `/health` shows nothing but "ok".
 
 ## Limitations
 - On Render's free plan, live results, the decision log and rule changes reset when the service restarts.

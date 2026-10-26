@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Peshkash · Offer Engine (Prototype)</title>
+<title>Peshkash · Marketer console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%239f1239'/%3E%3Cpath d='M9 14h14v10a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1z M8 11h16v3H8z M16 11v14' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Gurmukhi:wght@400;600&display=swap" rel="stylesheet">
 <!-- Prototype only: Tailwind's Play CDN builds styles in the browser. Pre-build it (like Samay) before going live. -->
@@ -299,15 +300,15 @@ function whySegment(c) {
 
 /* ---------- 5. Offers and rules (set by the marketing team) ---------- */
 const OFFERS = {
-  pct_off:         { label: '% off a category',             short: '% off',           icon: '🏷️' },
-  flat_off:        { label: 'Flat ₹ off above a minimum',   short: 'Flat ₹ off',      icon: '💸' },
-  free_delivery:   { label: 'Free delivery',                short: 'Free delivery',   icon: '🚚' },
-  double_points:   { label: '2× loyalty points',            short: '2× points',       icon: '⭐' },
-  points_reminder: { label: 'Points expiry reminder',       short: 'Points reminder', icon: '⏳' },
-  cart_reminder:   { label: 'Cart reminder',                short: 'Cart reminder',   icon: '🛒' },
-  early_access:    { label: 'Early access to Diwali sale',  short: 'Early access',    icon: '🪔' },
-  win_back:        { label: 'Win-back discount',            short: 'Win-back',        icon: '💌' },
-  welcome:         { label: 'Welcome offer',                short: 'Welcome',         icon: '👋' },
+  pct_off:         { label: '% off a category',             short: '% off',           icon: 'tag' },
+  flat_off:        { label: 'Flat ₹ off above a minimum',   short: 'Flat ₹ off',      icon: 'banknote' },
+  free_delivery:   { label: 'Free delivery',                short: 'Free delivery',   icon: 'truck' },
+  double_points:   { label: '2× loyalty points',            short: '2× points',       icon: 'star' },
+  points_reminder: { label: 'Points expiry reminder',       short: 'Points reminder', icon: 'hourglass' },
+  cart_reminder:   { label: 'Cart reminder',                short: 'Cart reminder',   icon: 'cart' },
+  early_access:    { label: 'Early access to Diwali sale',  short: 'Early access',    icon: 'sparkles' },
+  win_back:        { label: 'Win-back discount',            short: 'Win-back',        icon: 'heart' },
+  welcome:         { label: 'Welcome offer',                short: 'Welcome',         icon: 'smile' },
 };
 const OFFER_KEYS = Object.keys(OFFERS);
 
@@ -899,15 +900,59 @@ function computeStats() {
   };
 }
 
+/* ---------- Icons (Lucide, MIT) ---------- */
+const ICONS = {
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  list: '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+  sliders: '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
+  dashboard: '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+  message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  trending: '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  tag: '<path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1"/>',
+  banknote: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+  truck: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  star: '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>',
+  hourglass: '<path d="M5 22h14M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/>',
+  cart: '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+  sparkles: '<path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z"/>',
+  heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+  smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+  wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  userx: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5M22 8l-5 5"/>',
+  target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  pen: '<path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/>',
+  box: '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>',
+  grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+  calendar: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  bot: '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/>',
+  package: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  eye: '<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>',
+  mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+};
+const icon = (name, cls = 'w-4 h-4') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+const oIcon = t => icon(OFFERS[t].icon, 'w-3.5 h-3.5 shrink-0 text-slate-500');
+
 /* ---------- Small building blocks ---------- */
-const card = (inner, cls = '') => `<section class="min-w-0 bg-white rounded-2xl border border-slate-200 p-4 md:p-5 ${cls}">${inner}</section>`;
-const h2 = (t, sub = '') => `<h2 class="font-semibold text-slate-900">${t}</h2>${sub ? `<p class="text-sm text-slate-500 mt-0.5">${sub}</p>` : ''}`;
-const kpi = (label, value, sub = '', extra = '') => `<div class="bg-white rounded-2xl border border-slate-200 p-4 ${extra}"><div class="text-sm text-slate-500">${label}</div><div class="text-2xl font-bold mt-1 tabular-nums">${value}</div><div class="text-xs text-slate-500 mt-1">${sub}</div></div>`;
+const card = (inner, cls = '') => `<section class="min-w-0 bg-white rounded-xl border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-4 md:p-5 ${cls}">${inner}</section>`;
+const h2 = (t, sub = '') => `<h2 class="flex items-center gap-2 text-[15px] font-semibold text-slate-900 [&>svg]:text-brand-700 [&>svg]:w-[18px] [&>svg]:h-[18px]">${t}</h2>${sub ? `<p class="text-[13px] text-slate-500 mt-0.5">${sub}</p>` : ''}`;
+const kpi = (label, value, sub = '', extra = '') => `<div class="bg-white rounded-xl border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-4 ${extra}"><div class="text-xs font-medium uppercase tracking-wide text-slate-500">${label}</div><div class="text-[26px] leading-tight font-semibold tracking-tight mt-1.5 tabular-nums text-slate-900">${value}</div><div class="text-xs text-slate-500 mt-1">${sub}</div></div>`;
 const segChip = s => `<span class="inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${SEGMENTS[s].chip}">${SEGMENTS[s].label}</span>`;
 const outChip = o => `<span class="inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${OUTCOMES[o].chip}">${OUTCOMES[o].label}</span>`;
 const btn = (label, onclick, kind = 'primary', extra = '') => {
   const k = { primary: 'bg-brand-600 hover:bg-brand-700 text-white', ghost: 'bg-white hover:bg-slate-50 border border-slate-300 text-slate-700', soft: 'bg-brand-50 hover:bg-brand-100 text-brand-700' }[kind];
-  return `<button type="button" onclick="${onclick}" class="rounded-xl px-3.5 py-2 text-sm font-medium transition ${k} ${extra}">${label}</button>`;
+  return `<button type="button" onclick="${onclick}" class="inline-flex items-center gap-1.5 rounded-lg px-3.5 h-9 text-sm font-medium shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 ${k} ${extra}">${label}</button>`;
 };
 function describeOffer(o) {
   switch (o.type) {
@@ -921,14 +966,17 @@ function describeOffer(o) {
     case 'early_access': return 'Early access to Diwali sale';
   }
 }
-const offerChip = o => `<span class="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">${OFFERS[o.type].icon} ${esc(describeOffer(o))}</span>`;
+const offerChip = o => `<span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">${oIcon(o.type)} ${esc(describeOffer(o))}</span>`;
 const sendLabel = o => `${o.sendDay ? 'Tomorrow' : 'Today'}, ${hourLabel(o.sendHour)}`;
 const riskLabel = r => r == null ? '–' : r >= .6 ? 'High' : r >= .3 ? 'Medium' : 'Low';
 const riskBar = r => r == null ? '<span class="text-slate-400">–</span>' : `<div class="flex items-center gap-2"><div class="h-1.5 w-14 rounded-full bg-slate-100"><div class="h-1.5 rounded-full ${r >= .6 ? 'bg-orange-500' : r >= .3 ? 'bg-amber-400' : 'bg-emerald-500'}" style="width:${Math.max(6, r * 100)}%"></div></div><span class="text-xs text-slate-600">${riskLabel(r)}</span></div>`;
 function pageHead(title, sub, right = '') {
-  const liveScreen = LIVE.on && VIEWS[state.screen]?.live;
-  return `<div class="text-xs text-slate-500 mb-2 flex flex-wrap gap-x-3 gap-y-1"><span>${liveScreen ? 'Live Telegram bot' : LIVE.on ? 'Simulation' : 'BazaarKart demo'}</span><span>·</span><span>${num(liveScreen ? LIVE.info.customers : CUSTOMERS.length)} synthetic ${liveScreen ? 'shoppers' : 'customers'}</span><span>·</span><span>Sat 24 Oct 2026</span><span>·</span><span>🪔 Diwali in ${DAYS_TO_DIWALI} days</span></div>
-  <div class="flex flex-wrap items-end justify-between gap-3 mb-5"><div><h1 class="text-2xl font-bold tracking-tight">${title}</h1><p class="text-slate-600 mt-1 max-w-3xl">${sub}</p></div><div class="flex flex-wrap items-center gap-2">${right}</div></div>`;
+  const liveScreen = LIVE.on && (VIEWS[state.screen]?.live || state.screen === 'rules');
+  const ctx = liveScreen
+    ? `<span class="inline-flex items-center gap-1.5 font-medium text-emerald-700"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Live</span><span>${LIVE.info.bot ? '@' + esc(LIVE.info.bot) : 'Telegram bot'}</span><span>${num(LIVE.info.customers)} synthetic shoppers</span>`
+    : `<span class="font-medium text-slate-600">${LIVE.on ? 'Planning · simulation' : 'Demo'}</span><span>${num(CUSTOMERS.length)} synthetic customers</span><span class="inline-flex items-center gap-1">${icon('calendar', 'w-3 h-3')}Data as of 24 Oct 2026</span><span>Diwali in ${DAYS_TO_DIWALI} days</span>`;
+  return `<div class="text-xs text-slate-500 mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 [&>span+span]:before:content-['·'] [&>span+span]:before:mr-2.5 [&>span+span]:before:text-slate-300">${ctx}</div>
+  <div class="flex flex-wrap items-end justify-between gap-3 mb-6"><div><h1 class="text-[26px] leading-tight font-semibold tracking-tight text-slate-900">${title}</h1><p class="text-slate-500 mt-1 max-w-3xl text-[15px]">${sub}</p></div><div class="flex flex-wrap items-center gap-2">${right}</div></div>`;
 }
 function pager(total, page, size, fn) {
   const pages = Math.ceil(total / size);
@@ -942,7 +990,7 @@ const checkList = checks => `<ul class="divide-y divide-slate-100">${checks.map(
 let CHARTS = [];
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 function clearCharts() { CHARTS.forEach(ch => ch.destroy()); CHARTS = []; }
-function barChart(id, labels, datasets, { yFmt = v => v, tip = null, legend = false } = {}) {
+function barChart(id, labels, datasets, { yFmt = v => v, tip = null, legend = false, stacked = false, horizontal = false } = {}) {
   const el = document.getElementById(id);
   if (!el || typeof Chart === 'undefined') return;
   CHARTS.push(new Chart(el, {
@@ -953,8 +1001,12 @@ function barChart(id, labels, datasets, { yFmt = v => v, tip = null, legend = fa
       interaction: { mode: 'index', intersect: false },
       plugins: { legend: { display: legend, position: 'top', align: 'start', labels: { boxWidth: 12, boxHeight: 12, usePointStyle: true, pointStyle: 'rectRounded', color: css('--ink-2') } },
                  tooltip: { callbacks: tip ? { label: tip } : {} } },
-      scales: { x: { grid: { display: false }, ticks: { color: css('--ink-2'), autoSkip: true, maxRotation: 0 } },
-                y: { grid: { color: css('--grid') }, border: { display: false }, ticks: { color: css('--ink-2'), callback: yFmt } } },
+      indexAxis: horizontal ? 'y' : 'x',
+      scales: horizontal
+        ? { y: { stacked, grid: { display: false }, ticks: { color: css('--ink-2') } },
+            x: { stacked, grid: { color: css('--grid') }, border: { display: false }, ticks: { color: css('--ink-2'), precision: 0 } } }
+        : { x: { stacked, grid: { display: false }, ticks: { color: css('--ink-2'), autoSkip: true, maxRotation: 0 } },
+            y: { stacked, grid: { color: css('--grid') }, border: { display: false }, ticks: { color: css('--ink-2'), callback: yFmt, precision: 0 } } },
     },
   }));
 }
@@ -978,8 +1030,8 @@ function viewOverview() {
       <td class="py-2.5 pr-3">${segChip(s)}</td><td class="py-2.5 pr-3 tabular-nums text-right">${num(x.n)}</td>
       <td class="py-2.5 pr-3"><div class="flex items-center gap-2"><div class="h-1.5 w-20 rounded-full bg-slate-100"><div class="h-1.5 rounded-full" style="background:var(--series-1);width:${Math.max(2, x.m365 / S.m365All * 100)}%"></div></div><span class="tabular-nums text-xs">${pct(x.m365 / S.m365All)}</span></div></td>
       <td class="py-2.5 pr-3 tabular-nums text-right whitespace-nowrap">${x.rec.length ? `${Math.round(median(x.rec))} days` : '–'}</td>
-      <td class="py-2.5 text-slate-600 min-w-[16rem]">${SEGMENTS[s].play}</td></tr>`; }).join('');
-  return `${pageHead('Overview', 'How BazaarKart customers shop, and where an offer can actually change what they do.', btn('See the customers', "go('customers')", 'ghost') + btn('Run offers', "go('run')"))}
+      <td class="py-2.5 text-slate-600 min-w-[13rem]">${SEGMENTS[s].play}</td></tr>`; }).join('');
+  return `${pageHead('Overview', 'How BazaarKart customers shop, and where an offer can actually change what they do.', btn('See the customers', "go('customers')", 'ghost') + btn(icon('send', 'w-4 h-4') + 'Open simulator', "go('run')"))}
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
     ${kpi('Customers', num(CUSTOMERS.length), `${num(S.active90)} bought in the last 90 days`)}
     ${kpi('Revenue, last 90 days', inr(S.rev90), `${num(S.orders90)} orders · average ${inr(S.rev90 / S.orders90)}`)}
@@ -1023,8 +1075,8 @@ function custTable() {
     <td class="py-2.5 pr-3 text-right tabular-nums">${inr(c.m365)}</td>
     <td class="py-2.5 pr-3">${riskBar(c.churn)}</td>
     <td class="py-2.5 pr-3 text-right tabular-nums">${c.discAff == null ? '–' : pct(c.discAff)}</td>
-    <td class="py-2.5 pr-3 whitespace-nowrap">${c.cart ? `🛒 ${inr(c.cart.value)}` : '<span class="text-slate-400">–</span>'}</td>
-    <td class="py-2.5 text-right tabular-nums">${num(c.points)}${c.ptsExp >= 50 ? ' <span title="Some points expire within 30 days">⏳</span>' : ''}</td></tr>`).join('');
+    <td class="py-2.5 pr-3 whitespace-nowrap">${c.cart ? `<span class="inline-flex items-center gap-1">${icon('cart', 'w-3.5 h-3.5 text-slate-500')}${inr(c.cart.value)}</span>` : '<span class="text-slate-400">–</span>'}</td>
+    <td class="py-2.5 text-right tabular-nums">${num(c.points)}${c.ptsExp >= 50 ? ` <span title="Some points expire within 30 days" class="inline-block align-[-2px] text-amber-600">${icon('hourglass', 'w-3.5 h-3.5')}</span>` : ''}</td></tr>`).join('');
   return `<div class="overflow-x-auto scroll-thin"><table class="w-full text-sm min-w-[860px]"><thead><tr class="text-left text-xs text-slate-500">
     <th class="py-2 pr-3 font-medium">Customer</th><th class="py-2 pr-3 font-medium">Segment</th><th class="py-2 pr-3 font-medium">Last order</th><th class="py-2 pr-3 font-medium text-right">Orders (12 mo)</th><th class="py-2 pr-3 font-medium text-right">Spend (12 mo)</th><th class="py-2 pr-3 font-medium">Risk of leaving</th><th class="py-2 pr-3 font-medium text-right">Coupon use</th><th class="py-2 pr-3 font-medium">Open cart</th><th class="py-2 font-medium text-right">Points</th>
     </tr></thead><tbody>${rows || '<tr><td colspan="9" class="py-8 text-center text-slate-500">No customers match.</td></tr>'}</tbody></table></div>${pager(list.length, page, size, 'custPage')}`;
@@ -1049,19 +1101,19 @@ function custPage(p) { state.page = p; document.getElementById('custTable').inne
 function openCustomer(id) {
   const c = BY_ID[id];
   const ev = [];
-  if (c.ptsExp >= 50) ev.push({ d: -1, icon: '⏳', text: `${c.ptsExp} points (₹${c.ptsExp}) expire within 30 days` });
-  if (c.cart) ev.push({ d: Math.floor(c.cart.hoursAgo / 24), icon: '🛒', text: `Left ${c.cart.items.map(x => x.name).join(', ')} (${inr(c.cart.value)}) in the cart, ${c.cart.hoursAgo < 24 ? `${c.cart.hoursAgo} hours ago` : `${Math.round(c.cart.hoursAgo / 24)} days ago`}` });
-  for (const b of c.browse) ev.push({ d: b.d, icon: '👀', text: `Looked at ${b.item} (${CATS[b.cat].name})` });
-  if (c.lastOfferAgo < 99) ev.push({ d: c.lastOfferAgo, icon: '✉️', text: 'Got an offer from an earlier campaign' });
-  for (const o of c.orders.slice(0, 8)) ev.push({ d: o.d, icon: o.ret ? '↩️' : '📦', text: `Bought ${CATS[o.cat].name} for ${inr(o.value)}${o.disc ? ' with a coupon' : ''} · ${o.pay}${o.ret ? ' · returned' : ''}` });
-  if (c.orders.length > 8) ev.push({ d: c.orders[8].d, icon: '…', text: `${c.orders.length - 8} earlier orders` });
-  ev.push({ d: c.signupAgo, icon: '🎉', text: 'Joined BazaarKart' });
+  if (c.ptsExp >= 50) ev.push({ d: -1, icon: 'hourglass', text: `${c.ptsExp} points (₹${c.ptsExp}) expire within 30 days` });
+  if (c.cart) ev.push({ d: Math.floor(c.cart.hoursAgo / 24), icon: 'cart', text: `Left ${c.cart.items.map(x => x.name).join(', ')} (${inr(c.cart.value)}) in the cart, ${c.cart.hoursAgo < 24 ? `${c.cart.hoursAgo} hours ago` : `${Math.round(c.cart.hoursAgo / 24)} days ago`}` });
+  for (const b of c.browse) ev.push({ d: b.d, icon: 'eye', text: `Looked at ${b.item} (${CATS[b.cat].name})` });
+  if (c.lastOfferAgo < 99) ev.push({ d: c.lastOfferAgo, icon: 'mail', text: 'Got an offer from an earlier campaign' });
+  for (const o of c.orders.slice(0, 8)) ev.push({ d: o.d, icon: o.ret ? 'undo' : 'package', text: `Bought ${CATS[o.cat].name} for ${inr(o.value)}${o.disc ? ' with a coupon' : ''} · ${o.pay}${o.ret ? ' · returned' : ''}` });
+  if (c.orders.length > 8) ev.push({ d: c.orders[8].d, icon: 'more', text: `${c.orders.length - 8} earlier orders` });
+  ev.push({ d: c.signupAgo, icon: 'sparkles', text: 'Joined BazaarKart' });
   ev.sort((a, b) => a.d - b.d);
   const catTot = Object.values(c.catSpend).reduce((s, x) => s + x, 0);
   const dec = state.run?.decisions.find(d => d.c.id === id);
   const stat = (l, v) => `<div class="rounded-xl bg-slate-50 p-3"><div class="text-xs text-slate-500">${l}</div><div class="font-semibold tabular-nums mt-0.5">${v}</div></div>`;
   openDrawer(`<div class="flex items-start justify-between gap-3">
-      <div><div class="text-xl font-bold">${esc(c.name)}</div><div class="text-sm text-slate-500 mt-0.5">${c.id} · ${c.age} · ${esc(c.city)} (tier ${c.tier} city) · reads ${LANGS[c.lang]}</div><div class="mt-2 flex flex-wrap gap-1.5">${segChip(c.seg)}${c.cart ? '<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs">🛒 Open cart</span>' : ''}${c.optedOut ? '<span class="rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-xs">Stopped offers</span>' : ''}</div></div>
+      <div><div class="text-xl font-bold">${esc(c.name)}</div><div class="text-sm text-slate-500 mt-0.5">${c.id} · ${c.age} · ${esc(c.city)} (tier ${c.tier} city) · reads ${LANGS[c.lang]}</div><div class="mt-2 flex flex-wrap gap-1.5">${segChip(c.seg)}${c.cart ? '<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs">Open cart</span>' : ''}${c.optedOut ? '<span class="rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-xs">Stopped offers</span>' : ''}</div></div>
       ${btn('Close', 'closeDrawer()', 'ghost')}
     </div>
     <div class="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm"><span class="font-semibold">Why ${SEGMENTS[c.seg].label}:</span> ${esc(whySegment(c))}<div class="text-brand-800 mt-1">${SEGMENTS[c.seg].play}</div></div>
@@ -1073,7 +1125,7 @@ function openCustomer(id) {
     ${catTot ? `<h3 class="font-semibold mt-5 mb-2">Where they spend</h3><div class="space-y-1.5">${c.topCats.slice(0, 4).map(k => `<div class="flex items-center gap-2 text-sm"><span class="w-32 shrink-0">${CATS[k].name}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${c.catSpend[k] / catTot * 100}%"></div></div><span class="w-12 text-right tabular-nums text-xs">${pct(c.catSpend[k] / catTot)}</span></div>`).join('')}</div>` : ''}
     ${dec ? `<h3 class="font-semibold mt-5 mb-2">In the last campaign run</h3><div class="rounded-xl border border-slate-200 p-3 text-sm flex flex-wrap items-center gap-2">${outChip(dec.outcome)}${dec.final ? offerChip(dec.final) : ''}<span class="text-slate-500">${esc(decisionWhy(dec))}</span><button type="button" class="ml-auto text-brand-700 font-medium hover:underline" onclick="openDecision('${c.id}')">See the decision →</button></div>` : ''}
     <h3 class="font-semibold mt-5 mb-2">Timeline</h3>
-    <ol class="relative border-l border-slate-200 ml-2">${ev.slice(0, 16).map(e => `<li class="ml-4 pb-3"><span class="absolute -left-2.5 grid place-items-center w-5 h-5 rounded-full bg-white border border-slate-200 text-[11px]">${e.icon}</span><div class="text-xs text-slate-500">${e.d < 0 ? 'Coming up' : ago(e.d)}</div><div class="text-sm">${esc(e.text)}</div></li>`).join('')}</ol>`);
+    <ol class="relative border-l border-slate-200 ml-2">${ev.slice(0, 16).map(e => `<li class="ml-4 pb-3"><span class="absolute -left-2.5 grid place-items-center w-5 h-5 rounded-full bg-white border border-slate-200 text-[11px]">${icon(e.icon, 'w-3 h-3 text-slate-500')}</span><div class="text-xs text-slate-500">${e.d < 0 ? 'Coming up' : ago(e.d)}</div><div class="text-sm">${esc(e.text)}</div></li>`).join('')}</ol>`);
 }
 function openDrawer(html) {
   document.getElementById('drawer').innerHTML = `<div class="fixed inset-0 z-40 bg-slate-900/30" onclick="closeDrawer()"></div>
@@ -1245,28 +1297,28 @@ function viewRules() {
   const s = (key, sentence, min, max, step) => slider(key, sentence, min, max, step, FMTS[RULE_FMT[key]]);
   const hours = Array.from({ length: 24 }, (_, h) => h);
   const hourSel = key => `<select onchange="state.rules.${key}=+this.value;rulesTouched()" class="rounded-lg border border-slate-300 px-2 py-1 text-sm">${hours.map(h => `<option value="${h}" ${R[key] === h ? 'selected' : ''}>${hourLabel(h)}</option>`).join('')}</select>`;
-  const grid = `<div class="overflow-x-auto scroll-thin"><table class="text-sm min-w-[760px] w-full"><thead><tr><th class="text-left py-2 pr-3 font-medium text-xs text-slate-500">Segment</th>${OFFER_KEYS.map(t => `<th class="py-2 px-1 font-medium text-xs text-slate-600 text-center w-20"><div class="text-base">${OFFERS[t].icon}</div>${OFFERS[t].short}</th>`).join('')}</tr></thead>
+  const grid = `<div class="overflow-x-auto scroll-thin"><table class="text-sm min-w-[760px] w-full"><thead><tr><th class="text-left py-2 pr-3 font-medium text-xs text-slate-500">Segment</th>${OFFER_KEYS.map(t => `<th class="py-2 px-1 font-medium text-xs text-slate-600 text-center w-20"><div class="text-base">${oIcon(t)}</div>${OFFERS[t].short}</th>`).join('')}</tr></thead>
     <tbody>${SEG_KEYS.map(sg => `<tr class="border-t border-slate-100"><td class="py-2 pr-3">${segChip(sg)}</td>${OFFER_KEYS.map(t => `<td class="text-center"><input type="checkbox" aria-label="${OFFERS[t].label} for ${SEGMENTS[sg].label}" class="w-4 h-4 accent-brand-600" ${R.grid[sg].includes(t) ? 'checked' : ''} onchange="toggleGrid('${sg}','${t}',this.checked)"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-  return `${pageHead('Offer rules', 'These limits apply to every offer. The AI only chooses inside them, and every AI choice is checked against them again before it is sent.', btn('Reset to defaults', 'resetRules()', 'ghost') + btn('Run with these rules', "runNow();go('run')"))}
+  return `${pageHead('Offer rules', 'These limits apply to every offer. The AI only chooses inside them, and every AI choice is checked against them again before it is sent.', btn('Reset to defaults', 'resetRules()', 'ghost') + btn('Simulate these rules', "runNow();go('run')"))}
   ${LIVE.on ? `<div class="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm"><b>Live:</b> these are the rules the Telegram bot uses. Change them, check the preview, then save; the bot uses saved rules from its next decision.</div>` : ''}
   <div class="grid lg:grid-cols-[minmax(0,1fr)_23rem] gap-4 items-start">
   <aside id="rulePreview" class="order-first lg:order-last lg:sticky lg:top-4 bg-white rounded-2xl border-2 border-brand-200 p-4 md:p-5 transition-opacity min-w-0">${previewIdleHtml()}</aside>
   <div class="min-w-0">
   <div class="grid xl:grid-cols-2 gap-4">
-    ${card(`${h2('💰 Money limits')}${s('maxPct', 'Never give more than this % off', 0, 50, 5)}${s('maxFlat', 'Never give more than this flat ₹ off', 0, 1000, 50)}${s('marginFloor', 'Every offer must leave at least this much margin', 0, 30, 1)}${s('budget', 'Campaign budget', 25000, 500000, 5000)}`)}
-    ${card(`${h2('🔔 Don\'t over-message')}${s('maxPerWeek', 'At most this many offers per customer per week', 1, 5, 1)}${s('minGapDays', 'Wait at least this long between two offers', 0, 14, 1)}
+    ${card(`${h2(icon('wallet') + 'Money limits')}${s('maxPct', 'Never give more than this % off', 0, 50, 5)}${s('maxFlat', 'Never give more than this flat ₹ off', 0, 1000, 50)}${s('marginFloor', 'Every offer must leave at least this much margin', 0, 30, 1)}${s('budget', 'Campaign budget', 25000, 500000, 5000)}`)}
+    ${card(`${h2(icon('bell') + 'Don\'t over-message')}${s('maxPerWeek', 'At most this many offers per customer per week', 1, 5, 1)}${s('minGapDays', 'Wait at least this long between two offers', 0, 14, 1)}
       <div class="py-3 border-b border-slate-100"><div class="text-sm font-medium flex flex-wrap items-center gap-2">No messages between ${hourSel('quietFrom')} and ${hourSel('quietTo')}</div><p data-impact="quiet" class="text-xs text-slate-500 mt-1">${ruleImpact('quiet')}</p></div>
       <label class="py-3 text-sm flex items-start gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 mt-0.5 accent-brand-600" ${R.cartOwnLimit ? 'checked' : ''} onchange="state.rules.cartOwnLimit=this.checked;rulesTouched()"><span>Cart reminders have their own limit: one per cart, even if the customer got an offer recently<span class="block text-xs text-slate-500 mt-0.5">Off: cart reminders also wait for the weekly limit and the gap between offers.</span></span></label>`)}
-    ${card(`${h2('🚫 Who to leave out')}
+    ${card(`${h2(icon('userx') + 'Who to leave out')}
       <div class="py-3 border-b border-slate-100 text-sm flex items-center gap-2"><input type="checkbox" checked disabled class="w-4 h-4"> Customers who tapped "Stop offers" <span class="text-xs text-slate-500">(always on)</span></div>
       ${s('skipRecentDays', 'Skip customers who bought in the last', 0, 14, 1)}${s('maxReturnPct', 'Skip customers who return more than', 10, 100, 5)}`)}
-    ${card(`${h2('📏 Measure it', 'A holdout group gets nothing. Comparing them with everyone else shows what the offers really added.')}${s('holdoutPct', 'Keep this share of customers as a holdout', 0, 30, 1)}`)}
-    ${card(`${h2('✍️ Message rules')}${s('expiryDays', 'Offers last at most', 2, 30, 1)}
+    ${card(`${h2(icon('target') + 'Measure it', 'A holdout group gets nothing. Comparing them with everyone else shows what the offers really added.')}${s('holdoutPct', 'Keep this share of customers as a holdout', 0, 30, 1)}`)}
+    ${card(`${h2(icon('pen') + 'Message rules')}${s('expiryDays', 'Offers last at most', 2, 30, 1)}
       <label class="py-3 border-b border-slate-100 text-sm flex items-center gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 accent-brand-600" ${R.requireExpiry ? 'checked' : ''} onchange="state.rules.requireExpiry=this.checked;rulesTouched()"> Every message must show its expiry date</label>
       ${s('maxChars', 'Keep messages under', 150, 600, 10)}
       <div class="py-3"><div class="text-sm font-medium">Never use these words or phrases</div><div class="flex flex-wrap gap-1.5 mt-2">${R.banned.map((w, i) => `<span class="inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 text-xs">${esc(w)}<button type="button" aria-label="Remove ${esc(w)}" onclick="removeBanned(${i})" class="hover:text-rose-950">×</button></span>`).join('')}</div>
       <input type="text" placeholder="Add a word and press Enter" onkeydown="if(event.key==='Enter')addBanned(this)" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm"><p data-impact="banned" class="text-xs text-slate-500 mt-1"></p></div>`)}
-    ${card(`${h2('🎁 Offer sizes')}${s('cartMaxPct', 'Cart reminders: at most this % off', 0, 15, 1)}${s('welcomeFlat', 'Welcome offer for new customers', 0, 300, 25)}`)}
+    ${card(`${h2(icon('box') + 'Offer sizes')}${s('cartMaxPct', 'Cart reminders: at most this % off', 0, 15, 1)}${s('welcomeFlat', 'Welcome offer for new customers', 0, 300, 25)}`)}
   </div>
   ${card(`${h2('Who can get which offer', 'Tick the offers each segment may receive. The AI never sees the unticked ones.')}<div class="mt-3">${grid}</div>`, 'mt-4')}
   </div></div>`;
@@ -1300,8 +1352,8 @@ function viewRun() {
     <td class="py-2.5 text-slate-600 text-xs min-w-[18rem]">${esc(decisionWhy(d))}</td></tr>`).join('');
   const tile = (k, label, n, sub) => `<button type="button" onclick="state.runFilter='${k}';state.runPage=0;render()" class="text-left bg-white rounded-2xl border p-4 hover:border-brand-400 ${state.runFilter === k ? 'border-brand-500 ring-2 ring-brand-200' : 'border-slate-200'}"><div class="text-sm text-slate-500">${label}</div><div class="text-2xl font-bold mt-1 tabular-nums">${num(n)}</div><div class="text-xs text-slate-500 mt-1">${sub}</div></button>`;
   const steps = [['1', 'Customer rules', 'Opted out, bought recently, too many offers, high returns: skipped.'], ['2', 'Holdout', `${run.rules.holdoutPct}% kept out to measure results.`], ['3', 'AI picks', 'From the allowed offers only, with value, time and message.'], ['4', 'Rule check', 'Every pick is checked again. Problems go back to the AI once.'], ['5', 'Send', 'Passed: sent. Still failing: safe default or nothing.']];
-  return `${pageHead('Run offers', 'One campaign run: for every customer, which offer, why, and whether the rules let it through.', `<span class="text-xs text-slate-500">${state.rulesChanged ? '<span class="text-amber-700 font-medium">Rules changed since this run.</span>' : 'Using the current rules.'}</span>` + btn('Run campaign again', "runNow();render()"))}
-  <div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 mb-4"><b>The AI is simulated in this prototype.</b> It makes the kinds of mistakes a real model makes (late-night send times, discounts on low-margin categories, the wrong language, a missing expiry date, an over-eager phrase) so you can see the rule checker catch every one.</div>
+  return `${pageHead('Campaign simulator', 'One campaign run: for every customer, which offer, why, and whether the rules let it through.', `<span class="text-xs text-slate-500">${state.rulesChanged ? '<span class="text-amber-700 font-medium">Rules changed since this run.</span>' : 'Using the current rules.'}</span>` + btn('Run campaign again', "runNow();render()"))}
+  <div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 mb-4"><b>Campaign simulator.</b> A stand-in for Claude makes the kinds of mistakes a real model makes (late-night send times, discounts on low-margin categories, the wrong language, a missing expiry date, an over-eager phrase) so you can see the rule checker catch every one. </div>
   <ol class="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-4">${steps.map(([n, t, d]) => `<li class="bg-white rounded-xl border border-slate-200 p-3"><div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-brand-600 text-white text-xs grid place-items-center font-semibold">${n}</span><span class="font-semibold text-sm">${t}</span></div><p class="text-xs text-slate-500 mt-1.5">${d}</p></li>`).join('')}</ol>
   <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
     ${tile('all', 'All customers', D.length, `${inr(run.spent)} of ${inr(run.rules.budget)} budget committed`)}
@@ -1314,7 +1366,7 @@ function viewRun() {
   <div class="grid lg:grid-cols-3 gap-4 mt-4">
     ${card(`${h2('Changed before sending', 'What the rule checker caught in the AI\'s first pick')}<div class="mt-3">${bars(changedBy, 'var(--series-2)')}</div>`)}
     ${card(`${h2('Not sent', 'Customers the rules kept out of this campaign')}<div class="mt-3">${bars(blockedBy, '#94a3b8')}</div>`)}
-    ${card(`${h2('Offers sent', 'Mix of offer types that went out')}<div class="mt-3">${bars(Object.fromEntries(Object.entries(mix).map(([k, n]) => [`${OFFERS[k].icon} ${OFFERS[k].label}`, n])), 'var(--series-1)')}</div>`)}
+    ${card(`${h2('Offers sent', 'Mix of offer types that went out')}<div class="mt-3">${bars(Object.fromEntries(Object.entries(mix).map(([k, n]) => [`${oIcon(k)} ${OFFERS[k].label}`, n])), 'var(--series-1)')}</div>`)}
   </div>
   ${card(`<div class="flex flex-wrap items-center justify-between gap-2">${h2('Every decision', 'Most valuable customers are decided first, so the budget goes to them. Click a row for the full check.')}
       <span class="text-sm text-slate-500">Showing: <b>${state.runFilter === 'all' ? 'all' : state.runFilter === 'notsent' ? 'not sent' : OUTCOMES[state.runFilter].label.toLowerCase()}</b></span></div>
@@ -1366,8 +1418,8 @@ function viewTelegram() {
   const time = hourLabel(o.sendHour).replace(' ', ':00 ').toUpperCase();
   const stopped = state.tg.stopped === c.id && state.tg.chat.length;
   const bubble = (html, t = time) => `<div class="max-w-[85%] bg-white rounded-2xl rounded-bl-md px-3 py-2 shadow-sm text-[14px] leading-snug"><div class="tg-msg">${html}</div><div class="text-[11px] text-slate-400 text-right mt-0.5">${t}</div></div>`;
-  const listHtml = cands.slice(0, 60).map(x => `<button type="button" onclick="tgPick('${x.c.id}')" class="w-full text-left px-3 py-2 rounded-xl ${x.c.id === c.id ? 'bg-brand-50 ring-1 ring-brand-300' : 'hover:bg-slate-50'}"><div class="flex items-center justify-between gap-2"><span class="font-medium text-sm truncate">${esc(x.c.name)}</span>${outChip(x.outcome)}</div><div class="text-xs text-slate-500 truncate">${OFFERS[x.final.type].icon} ${esc(describeOffer(x.final))} · ${LANGS[x.c.lang]}</div></button>`).join('');
-  return `${pageHead('Telegram preview', 'Exactly what a customer sees in the bot. Everyone who starts the real bot gets a synthetic shopper profile and offers picked for it.')}
+  const listHtml = cands.slice(0, 60).map(x => `<button type="button" onclick="tgPick('${x.c.id}')" class="w-full text-left px-3 py-2 rounded-xl ${x.c.id === c.id ? 'bg-brand-50 ring-1 ring-brand-300' : 'hover:bg-slate-50'}"><div class="flex items-center justify-between gap-2"><span class="font-medium text-sm truncate">${esc(x.c.name)}</span>${outChip(x.outcome)}</div><div class="text-xs text-slate-500 truncate">${oIcon(x.final.type)} ${esc(describeOffer(x.final))} · ${LANGS[x.c.lang]}</div></button>`).join('');
+  return `${pageHead('Message preview', 'Exactly what a customer sees in the bot. Everyone who starts the real bot gets a synthetic shopper profile and offers picked for it.')}
   <div class="grid lg:grid-cols-[20rem_1fr] gap-4 items-start">
     <div class="space-y-4 min-w-0">
       ${card(`${h2('Pick a customer', `${num(cands.length)} customers got an offer in the last run`)}<input type="search" value="${esc(state.tg.q)}" oninput="state.tg.q=this.value;render();const i=document.getElementById('tgSearch');i.focus();i.setSelectionRange(i.value.length,i.value.length)" id="tgSearch" placeholder="Search name or city" class="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"><div class="mt-2 max-h-80 overflow-y-auto scroll-thin space-y-1">${listHtml || '<p class="text-sm text-slate-500 p-2">No match.</p>'}</div>`)}
@@ -1410,7 +1462,7 @@ function viewResults() {
   };
   const gMax = Math.max(1, ...ev.groupRows.flatMap(g => [g.ai, g.blanket]));
   const pts = v => `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)} pts`;
-  return `${pageHead('Results', 'Did the offers make money? Simulated for the 14 days after sending, using each synthetic customer\'s hidden buying behaviour. Profit also counts future orders from customers won back from leaving.', state.rulesChanged ? `<span class="text-xs text-amber-700 font-medium">Rules changed since this run.</span>${btn('Run again', 'runNow();render()')}` : '')}
+  return `${pageHead('Impact report', 'Did the offers make money? Simulated for the 14 days after sending, using each synthetic customer\'s hidden buying behaviour. Profit also counts future orders from customers won back from leaving.', state.rulesChanged ? `<span class="text-xs text-amber-700 font-medium">Rules changed since this run.</span>${btn('Run again', 'runNow();render()')}` : '')}
   <div class="rounded-2xl bg-gradient-to-r from-brand-800 via-brand-700 to-orange-600 text-white p-5 md:p-6">
     <div class="text-sm text-brand-100">Extra profit from this campaign (expected, after discounts)</div>
     <div class="text-4xl font-bold mt-1 tabular-nums">${inr(inc)}</div>
@@ -1525,7 +1577,7 @@ function describeChoice(ch) {
   if (!o) return `“${esc(t)}” (not an offer type)`;
   const vals = [ch.percent_off ? `${ch.percent_off}%` : '', ch.flat_off ? `₹${ch.flat_off}` : '', ch.min_order ? `above ₹${num(ch.min_order)}` : '',
     t === 'pct_off' && CATS[ch.category] ? `on ${CATS[ch.category].name}` : ''].filter(Boolean).join(' ');
-  return `${o.icon} ${o.label}${vals ? ': ' + vals : ''}`;
+  return `${oIcon(t)} ${o.label}${vals ? ': ' + vals : ''}`;
 }
 function attemptsHtml(attempts) {
   if (!attempts?.length) return '<p class="text-sm text-slate-500">The AI was not asked (AI off, or a customer rule said no first).</p>';
@@ -1552,39 +1604,60 @@ function openLiveOffer(id) {
     <h3 class="font-semibold mt-5 mb-2">Final rule check</h3>${checkList(o.checks.filter(x => CHECKS[x.id]))}`);
 }
 function viewLive() {
-  if (!LIVE.on) return `${pageHead('Live bot', 'Start the bot (python -m bot.main) and open the address it prints to see live results here.')}`;
-  const L = LIVE.data || { recent: [], by_source: {}, by_type: {} }, bot = LIVE.info.bot;
+  if (!LIVE.on) return `${pageHead('Dashboard', 'Start the bot (python -m bot.main) and open the address it prints to see live results here.')}`;
+  const L = LIVE.data || { recent: [], by_source: {}, by_type: {}, by_segment: [], by_trigger: {}, by_language: {}, timeline: [] }, bot = LIVE.info.bot;
   const link = bot ? `https://t.me/${bot}` : null;
   const pctOf = (x) => x == null ? '–' : pct(x);
   const total = Object.values(L.by_source).reduce((a, b) => a + b, 0);
-  const srcRows = ['ai', 'ai_retry', 'rules'].map(k => `<div class="py-2"><div class="flex items-center justify-between gap-2 text-sm">${chipOf(SOURCES[k])}<span class="tabular-nums font-semibold">${num(L.by_source[k] || 0)}</span></div>
-      <div class="h-2 mt-1.5 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${total ? (L.by_source[k] || 0) / total * 100 : 0}%"></div></div><p class="text-xs text-slate-500 mt-1">${SOURCES[k][2]}</p></div>`).join('');
+  const srcRows = ['ai', 'ai_retry', 'rules'].map(k => `<div class="py-2.5"><div class="flex items-center justify-between gap-2 text-sm">${chipOf(SOURCES[k])}<span class="tabular-nums font-semibold">${num(L.by_source[k] || 0)}<span class="text-slate-400 font-normal ml-1">${total ? pct((L.by_source[k] || 0) / total) : ''}</span></span></div>
+      <div class="h-1.5 mt-2 rounded-full bg-slate-100"><div class="h-1.5 rounded-full" style="background:var(--series-1);width:${total ? (L.by_source[k] || 0) / total * 100 : 0}%"></div></div><p class="text-xs text-slate-500 mt-1.5">${SOURCES[k][2]}</p></div>`).join('');
   const typeMax = Math.max(1, ...Object.values(L.by_type));
-  const typeRows = Object.entries(L.by_type).sort((a, b) => b[1] - a[1]).map(([t, n]) => `<div class="flex items-center gap-2 text-sm py-1"><span class="w-48 shrink-0 truncate">${OFFERS[t].icon} ${OFFERS[t].label}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${n / typeMax * 100}%"></div></div><span class="w-8 text-right tabular-nums">${n}</span></div>`).join('');
-  const rows = L.recent.map(o => `<tr class="border-t border-slate-100 hover:bg-brand-50/50 cursor-pointer" onclick="openLiveOffer(${o.id})">
-      <td class="py-2.5 pr-3 whitespace-nowrap text-slate-600">${fmtWhen(o.at)}</td><td class="py-2.5 pr-3">${shopperCell(o.shopper)}</td>
-      <td class="py-2.5 pr-3">${o.shopper.seg ? segChip(o.shopper.seg) : ''}</td>
-      <td class="py-2.5 pr-3"><span class="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">${OFFERS[o.type].icon} ${esc(o.summary)}</span></td>
-      <td class="py-2.5 pr-3">${chipOf(SOURCES[o.source])}</td><td class="py-2.5 pr-3">${chipOf(LIVE_STATUS[o.status])}</td>
-      <td class="py-2.5 text-right tabular-nums">${inr(o.cost)}</td></tr>`).join('');
-  return `${pageHead('Live bot', `What customers get from ${bot ? '@' + esc(bot) : 'the bot'}, as it happens. Updates every 10 seconds.`,
-      (link ? `<a href="${link}" target="_blank" rel="noopener" class="rounded-xl px-3.5 py-2 text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white">Open the bot</a>` : '') + updatedLabel() + btn('Refresh', 'manualRefresh(this)', 'ghost', 'disabled:opacity-60'))}
-    ${LIVE.error ? `<div class="mb-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">${esc(LIVE.error)}</div>` : ''}
-    <div class="mb-4 flex flex-wrap gap-2 text-sm"><span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1">● Bot running</span><span class="rounded-full ${LIVE.info.ai_model ? 'bg-brand-100 text-brand-800' : 'bg-slate-200 text-slate-700'} px-3 py-1">${LIVE.info.ai_model ? `AI: ${esc(LIVE.info.ai_model)} chooses within the rules` : 'AI off: rule-based offers'}</span></div>
+  const typeRows = Object.entries(L.by_type).sort((a, b) => b[1] - a[1]).map(([t, n]) => `<div class="flex items-center gap-3 text-sm py-1.5"><span class="flex-1 min-w-0 truncate inline-flex items-center gap-2">${oIcon(t)}<span class="truncate">${OFFERS[t].label}</span></span><div class="h-1.5 w-20 shrink-0 rounded-full bg-slate-100"><div class="h-1.5 rounded-full" style="background:var(--series-1);width:${n / typeMax * 100}%"></div></div><span class="w-8 text-right tabular-nums text-slate-700">${n}</span></div>`).join('');
+  const share = (obj, names) => { const t = Object.values(obj).reduce((a, b) => a + b, 0) || 1; return Object.entries(obj).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="flex items-center justify-between text-sm py-1"><span class="text-slate-700">${esc(names[k] || k)}</span><span class="tabular-nums text-slate-500">${num(n)} · ${pct(n / t)}</span></div>`).join('') || '<p class="text-sm text-slate-400">No data yet.</p>'; };
+  const rows = L.recent.map(o => `<tr class="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onclick="openLiveOffer(${o.id})">
+      <td class="py-3 pr-3 whitespace-nowrap text-slate-500">${fmtWhen(o.at)}</td><td class="py-3 pr-3">${shopperCell(o.shopper)}</td>
+      <td class="py-3 pr-3">${o.shopper.seg ? segChip(o.shopper.seg) : ''}</td>
+      <td class="py-3 pr-3"><span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">${oIcon(o.type)} ${esc(o.summary)}</span></td>
+      <td class="py-3 pr-3">${chipOf(SOURCES[o.source])}</td><td class="py-3 pr-3">${chipOf(LIVE_STATUS[o.status])}</td>
+      <td class="py-3 text-right tabular-nums">${inr(o.cost)}</td></tr>`).join('');
+  const linkBtn = (href, label, ic, primary, extra = '') => `<a href="${href}" ${extra} class="inline-flex items-center gap-1.5 rounded-lg px-3.5 h-9 text-sm font-medium shadow-sm transition ${primary ? 'bg-brand-600 hover:bg-brand-700 text-white' : 'bg-white hover:bg-slate-50 border border-slate-300 text-slate-700'}">${icon(ic, 'w-4 h-4')}${label}</a>`;
+  return `${pageHead('Dashboard', `What customers get from ${bot ? '@' + esc(bot) : 'the bot'}, as it happens. Updates every 10 seconds.`,
+      updatedLabel() + btn(icon('refresh', 'w-4 h-4') + 'Refresh', 'manualRefresh(this)', 'ghost', 'disabled:opacity-60')
+      + linkBtn('/api/export.csv', 'Export CSV', 'download', false, 'download')
+      + (link ? linkBtn(link, 'Open the bot', 'external', true, 'target="_blank" rel="noopener"') : ''))}
+    ${LIVE.error ? `<div class="mb-4 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">${esc(LIVE.error)}</div>` : ''}
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
       ${kpi('Subscribers', num(L.subscribers || 0), `started the bot · ${num(L.stopped_users || 0)} stopped offers`)}
       ${kpi('Offers sent', num(L.delivered || 0), L.queued ? `${num(L.queued)} waiting for morning` : 'all delivered')}
-      ${kpi('Claimed', pctOf(L.claim_rate), `${num(L.claimed || 0)} of ${num(L.delivered || 0)} offers`)}
-      ${kpi('Stopped after an offer', pctOf(L.stop_rate), `${num(L.stopped || 0)} · ${num(L.later || 0)} said "not now"`)}
-      ${kpi('Budget used', inr(L.spent || 0), `of ${inr(L.budget || 0)}, counting every offer at full cost`)}
+      ${kpi('Claim rate', pctOf(L.claim_rate), `${num(L.claimed || 0)} of ${num(L.delivered || 0)} offers claimed`)}
+      ${kpi('Opt-out rate', pctOf(L.stop_rate), `${num(L.stopped || 0)} stopped · ${num(L.later || 0)} said "not now"`)}
+      ${kpi('Budget used', inr(L.spent || 0), `of ${inr(L.budget || 0)} · every offer at full cost`)}
     </div>
-    ${!L.recent.length ? card(`${h2('No offers yet')}<p class="text-sm text-slate-600 mt-2">Share the bot link with customers${link ? `: <a class="text-brand-700 font-medium" href="${link}" target="_blank" rel="noopener">${link}</a>` : ''}. A Telegram bot can only message people who have started it.</p>`, 'mt-4') : `
-    <div class="grid lg:grid-cols-2 gap-4 mt-4">
-      ${card(`${h2('Who chose each offer', 'Every AI choice is checked against the rules before it is sent.')}<div class="mt-2 divide-y divide-slate-100">${srcRows}</div>`)}
-      ${card(`${h2('Offers sent, by type')}<div class="mt-3">${typeRows}</div>`)}
+    ${!L.recent.length ? card(`${h2(icon('send') + 'No offers yet')}<p class="text-sm text-slate-600 mt-2">Share the bot link with customers${link ? `: <a class="text-brand-700 font-medium" href="${link}" target="_blank" rel="noopener">${link}</a>` : ''}. A Telegram bot can only message people who have started it.</p>`, 'mt-4') : `
+    <div class="grid lg:grid-cols-3 gap-4 mt-4">
+      ${card(`${h2(icon('activity') + 'Offers over time', 'Each offer, by what the customer did with it.')}<div class="h-64 mt-3"><canvas id="chTimeline" aria-label="Offers over time, stacked by outcome"></canvas></div>`, 'lg:col-span-2')}
+      ${card(`${h2(icon('shield') + 'Who chose each offer', 'Every AI choice is checked against the rules before it is sent.')}<div class="mt-1 divide-y divide-slate-100">${srcRows}</div>`)}
     </div>
-    ${card(`${h2('Latest offers', 'Click an offer to see what the AI proposed and what the rule checker said.')}
-      <div class="overflow-x-auto scroll-thin mt-3"><table class="w-full text-sm min-w-[860px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">When</th><th class="py-2 pr-3 font-medium">Shopper</th><th class="py-2 pr-3 font-medium">Segment</th><th class="py-2 pr-3 font-medium">Offer</th><th class="py-2 pr-3 font-medium">Chosen by</th><th class="py-2 pr-3 font-medium">What happened</th><th class="py-2 font-medium text-right">Cost if used</th></tr></thead><tbody>${rows}</tbody></table></div>`, 'mt-4')}`}`;
+    <div class="grid lg:grid-cols-3 gap-4 mt-4">
+      ${card(`${h2(icon('users') + 'Results by segment', 'Offers sent and claimed for each customer group.')}<div class="h-64 mt-3"><canvas id="chSegments" aria-label="Offers and claims by segment"></canvas></div>`, 'lg:col-span-2')}
+      ${card(`${h2(icon('tag') + 'Offers by type')}<div class="mt-2">${typeRows}</div>
+        <div class="mt-4 pt-3 border-t border-slate-100"><div class="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">What started the offer</div>${share(L.by_trigger, TRIGGERS)}</div><div class="mt-3 pt-3 border-t border-slate-100"><div class="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">Customer language</div>${share(L.by_language, LANGS)}</div>`)}
+    </div>
+    ${card(`<div class="flex items-center justify-between gap-2">${h2(icon('list') + 'Latest offers', 'Click an offer to see what the AI proposed and what the rule checker said.')}</div>
+      <div class="overflow-x-auto scroll-thin mt-3"><table class="w-full text-sm min-w-[860px]"><thead><tr class="text-left text-xs font-medium uppercase tracking-wide text-slate-500 border-b border-slate-200"><th class="py-2 pr-3 font-medium">When</th><th class="py-2 pr-3 font-medium">Shopper</th><th class="py-2 pr-3 font-medium">Segment</th><th class="py-2 pr-3 font-medium">Offer</th><th class="py-2 pr-3 font-medium">Chosen by</th><th class="py-2 pr-3 font-medium">Outcome</th><th class="py-2 font-medium text-right">Cost if used</th></tr></thead><tbody>${rows}</tbody></table></div>`, 'mt-4')}`}`;
+}
+function afterLive() {
+  const L = LIVE.data;
+  if (!L || !L.recent.length) return;
+  const series = [['claimed', 'Claimed', '#059669'], ['later', 'Not now', '#f59e0b'], ['no_answer', 'No answer yet', '#94a3b8'], ['stopped', 'Stopped offers', '#e11d48'], ['queued', 'Waiting for morning', '#0ea5e9']]
+    .filter(([k]) => L.timeline.some(b => b[k]));
+  barChart('chTimeline', L.timeline.map(b => b.label), series.map(([k, label, color]) => ({ label, data: L.timeline.map(b => b[k]), backgroundColor: color, maxBarThickness: 28, borderRadius: 3 })),
+    { stacked: true, legend: true, tip: ctx => ` ${ctx.dataset.label}: ${ctx.raw}` });
+  const segs = L.by_segment;
+  barChart('chSegments', segs.map(s => s.label), [
+    { label: 'Offers sent', data: segs.map(s => s.offers), backgroundColor: css('--series-1'), maxBarThickness: 12, categoryPercentage: .6 },
+    { label: 'Claimed', data: segs.map(s => s.claimed), backgroundColor: css('--series-2'), maxBarThickness: 12, categoryPercentage: .6 },
+  ], { horizontal: true, legend: true, tip: ctx => ` ${ctx.dataset.label}: ${ctx.raw}` });
 }
 function viewLog() {
   if (!LIVE.on) return `${pageHead('Decision log', 'Available when the page is opened from the running bot.')}`;
@@ -1599,7 +1672,7 @@ function viewLog() {
       <td class="py-2.5 pr-3">${d.outcome === 'offer' ? chipOf(['Offer made', 'bg-emerald-100 text-emerald-800']) : chipOf(['Not sent', 'bg-rose-100 text-rose-800'])}</td>
       <td class="py-2.5 pr-3">${d.outcome === 'offer' || d.ai_attempts.length ? chipOf(SOURCES[d.source]) : ''}</td>
       <td class="py-2.5 text-xs text-slate-600 min-w-[18rem]">${d.offer ? `<b class="text-slate-800">${esc(d.offer)}</b> · ` : ''}${esc(d.outcome === 'offer' ? d.reason : (d.failed[0]?.detail || d.reason))}${d.ai_attempts.some(a => a.failed?.length) ? `<div class="text-amber-700 mt-0.5">Checker refused: ${esc(d.ai_attempts.flatMap(a => (a.failed || []).map(f => f.detail)).join(' · '))}</div>` : ''}</td></tr>`).join('');
-  return `${pageHead('Decision log', 'Every time the engine decided for a customer, including when nothing was sent and why. Newest first.', updatedLabel() + btn('Refresh', 'manualRefresh(this)', 'ghost', 'disabled:opacity-60'))}
+  return `${pageHead('Decision log', 'Every time the engine decided for a customer, including when nothing was sent and why. Newest first.', updatedLabel() + btn(icon('refresh', 'w-4 h-4') + 'Refresh', 'manualRefresh(this)', 'ghost', 'disabled:opacity-60'))}
     ${card(`<div class="flex flex-wrap gap-2">${Object.keys(F).map(chip).join('')}</div>
       <div class="overflow-x-auto scroll-thin mt-3"><table class="w-full text-sm min-w-[900px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">When</th><th class="py-2 pr-3 font-medium">Trigger</th><th class="py-2 pr-3 font-medium">Shopper</th><th class="py-2 pr-3 font-medium">Result</th><th class="py-2 pr-3 font-medium">Chosen by</th><th class="py-2 font-medium">Offer and reason</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="6" class="py-8 text-center text-slate-500">Nothing here yet.</td></tr>'}</tbody></table></div>`)}`;
@@ -1614,28 +1687,29 @@ function openLogEntry(i) {
 
 /* ---------- Shell and navigation ---------- */
 const VIEWS = {
-  live:      { label: 'Live bot',         icon: '🟢', html: viewLive, live: true },
-  log:       { label: 'Decision log',     icon: '🧾', html: viewLog, live: true },
-  overview:  { label: 'Overview',         icon: '📊', html: viewOverview, after: afterOverview },
-  customers: { label: 'Customers',        icon: '👥', html: viewCustomers },
-  rules:     { label: 'Rules',            icon: '🧭', html: viewRules, after: renderPreview },
-  run:       { label: 'Run offers',       icon: '🚀', html: viewRun },
-  telegram:  { label: 'Telegram preview', icon: '💬', html: viewTelegram },
-  results:   { label: 'Results',          icon: '📈', html: viewResults, after: afterResults },
+  live:      { label: 'Dashboard',          icon: 'activity',  html: viewLive, after: afterLive, live: true },
+  log:       { label: 'Decision log',       icon: 'list',      html: viewLog, live: true },
+  overview:  { label: 'Overview',           icon: 'dashboard', html: viewOverview, after: afterOverview },
+  customers: { label: 'Customers',          icon: 'users',     html: viewCustomers },
+  rules:     { label: 'Rules',              icon: 'sliders',   html: viewRules, after: renderPreview },
+  run:       { label: 'Campaign simulator', icon: 'send',      html: viewRun },
+  telegram:  { label: 'Message preview',    icon: 'message',   html: viewTelegram },
+  results:   { label: 'Impact report',      icon: 'trending',  html: viewResults, after: afterResults },
 };
 function go(screen) { state.screen = screen; closeDrawer(); render(); window.scrollTo(0, 0); try { history.replaceState(null, '', '#' + screen); } catch (e) { /* file:// may block */ } }
 function render() {
   clearCharts();
-  const navBtn = ([k, v]) => `<button type="button" data-screen="${k}" onclick="go('${k}')" class="shrink-0 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap ${state.screen === k ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'}" ${state.screen === k ? 'aria-current="page"' : ''}><span aria-hidden="true">${v.icon}</span>${v.label}${k === 'rules' ? `<span class="unsaved ${rulesDirty() ? '' : 'hidden'} ml-auto w-2 h-2 rounded-full bg-orange-500" title="Unsaved rule changes"></span>` : ''}</button>`;
+  const navBtn = ([k, v]) => `<button type="button" data-screen="${k}" onclick="go('${k}')" class="group shrink-0 flex items-center gap-2.5 rounded-lg px-2.5 h-9 text-[13.5px] font-medium whitespace-nowrap transition ${state.screen === k ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}" ${state.screen === k ? 'aria-current="page"' : ''}>${icon(v.icon, `w-[18px] h-[18px] shrink-0 ${state.screen === k ? 'text-brand-700' : 'text-slate-400 group-hover:text-slate-600'}`)}${v.label}${k === 'rules' ? `<span class="unsaved ${rulesDirty() ? '' : 'hidden'} ml-auto w-2 h-2 rounded-full bg-orange-500" title="Unsaved rule changes"></span>` : ''}</button>`;
+  const group = label => `<div class="hidden md:block px-2.5 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">${label}</div>`;
   const entries = Object.entries(VIEWS);
+  const pick = keys => keys.map(k => [k, VIEWS[k]]).map(navBtn).join('');
   document.getElementById('nav').innerHTML = LIVE.on
-    ? entries.filter(([, v]) => v.live).map(navBtn).join('') + entries.filter(([k]) => k === 'rules').map(navBtn).join('')
-      + `<div class="hidden md:block px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Simulation · ${num(CUSTOMERS.length)} made-up shoppers</div>`
-      + entries.filter(([k, v]) => !v.live && k !== 'rules').map(navBtn).join('')
-    : entries.filter(([, v]) => !v.live).map(navBtn).join('');
+    ? group('Live') + pick(['live', 'log', 'rules']) + group('Planning · simulation') + pick(['overview', 'customers', 'run', 'telegram', 'results'])
+    : group('Planning') + pick(['overview', 'customers', 'rules', 'run', 'telegram', 'results']);
   document.getElementById('footNote').innerHTML = LIVE.on
-    ? `Live: connected to ${LIVE.info.bot ? '@' + esc(LIVE.info.bot) : 'the bot'}.<br>Rules here are the bot's rules. The simulation screens use made-up shoppers.`
-    : 'Prototype · synthetic data only.<br>AI choices are simulated here; the real engine uses Claude.';
+    ? `<div class="flex items-center gap-2.5"><span class="relative flex w-2 h-2"><span class="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-60 animate-ping"></span><span class="relative inline-flex w-2 h-2 rounded-full bg-emerald-500"></span></span><div class="min-w-0"><div class="text-[13px] font-medium text-slate-800 truncate">${LIVE.info.bot ? '@' + esc(LIVE.info.bot) : 'Bot'} online</div><div class="text-xs text-slate-500 truncate">${LIVE.info.ai_model ? 'AI: ' + esc(LIVE.info.ai_model) : 'Rule-based offers'}</div></div></div>
+       ${LIVE.info.signed_in_with_password ? `<a href="/logout" class="mt-3 inline-flex items-center gap-2 text-[13px] text-slate-500 hover:text-slate-900">${icon('logout', 'w-4 h-4')}Sign out</a>` : ''}`
+    : `<div class="text-[13px] font-medium text-slate-700">Demo mode</div><div class="text-xs text-slate-500 mt-0.5">Built-in sample data and a simulated AI. Nothing is saved.</div>`;
   const v = VIEWS[state.screen];
   const fresh = state.lastScreen !== state.screen;
   document.getElementById('main').innerHTML = `<div class="${fresh ? 'fade-in' : ''}">${v.html()}</div>`;
@@ -1643,12 +1717,12 @@ function render() {
   if (v.after) v.after();
 }
 document.getElementById('app').innerHTML = `<div class="min-h-screen md:flex">
-  <aside class="bg-white border-b md:border-b-0 md:border-r border-slate-200 md:w-60 md:shrink-0 md:h-screen md:sticky md:top-0 flex flex-col">
-    <div class="px-4 pt-3 pb-2 md:py-5 flex items-center gap-2.5"><div class="w-9 h-9 rounded-xl bg-brand-600 text-white grid place-items-center text-lg" aria-hidden="true">🎁</div><div><div class="font-bold leading-tight">Peshkash</div><div class="text-xs text-slate-500 leading-tight">Offer engine · BazaarKart</div></div></div>
-    <nav id="nav" aria-label="Screens" class="flex md:flex-col gap-1 px-2 md:px-3 pb-2 overflow-x-auto scroll-thin"></nav>
-    <div id="footNote" class="hidden md:block mt-auto p-4 text-xs text-slate-500 border-t border-slate-200"></div>
+  <aside class="bg-white border-b md:border-b-0 md:border-r border-slate-200 md:w-64 md:shrink-0 md:h-screen md:sticky md:top-0 flex flex-col">
+    <div class="px-4 h-16 flex items-center gap-3 md:border-b md:border-slate-100"><div class="w-9 h-9 rounded-[10px] bg-gradient-to-br from-brand-600 to-brand-800 text-white grid place-items-center shadow-sm" aria-hidden="true">${icon('gift', 'w-5 h-5')}</div><div><div class="font-semibold tracking-tight leading-tight text-slate-900">Peshkash</div><div class="text-xs text-slate-500 leading-tight">BazaarKart · Marketing</div></div></div>
+    <nav id="nav" aria-label="Screens" class="flex md:flex-col gap-0.5 px-2 md:px-3 pb-2 overflow-x-auto scroll-thin"></nav>
+    <div id="footNote" class="hidden md:block mt-auto px-4 py-4 border-t border-slate-100"></div>
   </aside>
-  <main id="main" class="flex-1 min-w-0 px-4 py-5 md:px-8 md:py-7"></main>
+  <main id="main" class="flex-1 min-w-0 px-4 py-5 md:px-10 md:py-8 max-w-[1400px]"></main>
 </div><div id="drawer"></div>`;
 state.savedRules = structuredClone(state.rules);
 runNow();
