@@ -12,7 +12,7 @@ grocery, sports). All customer data is synthetic.
 ## Users
 | User | What they do |
 |---|---|
-| Marketing manager | Sets the rules (limits, budget, who may get what), runs campaigns, reads results |
+| Marketing manager | Sets the rules (limits, budget, who may get what), previews a change before saving, reads live results and the Impact report |
 | Customer on Telegram (anyone who starts the bot) | Starts the bot, gets a synthetic shopper profile, receives offers, claims or ignores them |
 | Platform owner | Watches the audit log: what the AI chose, what the rules blocked and why |
 
@@ -32,7 +32,7 @@ grocery, sports). All customer data is synthetic.
 - Browsing sessions, cart events (added, abandoned, bought), loyalty points (balance, expiry), offers received/redeemed.
 - Catalog: categories with typical prices and **margins** (needed for discount limits).
 
-Realism targets: top 20% of customers bring 60–70% of revenue; basket values are log-normal; time between orders
+Realism targets: top 20% of customers bring 60–80% of revenue; basket values are log-normal; time between orders
 follows a gamma distribution per customer; weekends, salary days (1st–5th) and Diwali show spikes; COD is more common
 in smaller cities; fashion has the highest return rate; most carts are abandoned (~70%).
 
@@ -68,15 +68,15 @@ live trigger **Cart abandoner**.
 
 ## Measuring whether offers work
 Treatment vs holdout: redemption rate, revenue per customer, **incremental revenue**, discount cost, ROI. Count of
-offers blocked or fixed by each rule. Strategy comparison on the synthetic population: "20% to everyone" vs "rules only"
-vs "AI within rules".
+offers blocked or fixed by each rule. Strategy comparison on the synthetic population: "20% to everyone" vs "one offer per
+segment" vs "AI within rules" (the Impact report).
 
 ## Advanced (roadmap)
-- Uplift groups: sure things / persuadables / lost causes / do-not-disturb
+- ✅ Uplift groups on the Impact report: would buy anyway / persuadable / unlikely either way / do not disturb
 - ✅ Rule-change preview on the Rules screen (changes listed, then offers, people left out, budget, average discount,
   AI fixes and expected profit, before and after; nothing saved until Save)
 - Budget-aware allocation across customers; offer fatigue; festival calendar
-- Hindi/Punjabi messages; message A/B variants
+- ✅ Hindi/Punjabi messages; not yet: message A/B variants
 - Approval queue for high-value offers
 - Coupon-abuse signals
 
@@ -88,4 +88,5 @@ vs "AI within rules".
 5. ✅ Telegram bot (start, profile, offers with buttons, cart flow, stop); offers come from the Claude agent.
 6. ✅ The bot serves the page in live mode: rules editing, live results and the decision log from real bot events.
 7. ✅ Hosting setup for Render (password-protected page, health check, deploy guide).
-8. Advanced features: ✅ rule-change preview; not yet: approval queue, coupon-abuse signals.
+8. ✅ Marketer console: sign-in page, Dashboard charts, CSV export, "Open the bot" popup (Telegram Web link and QR code).
+9. Advanced features: ✅ rule-change preview, uplift groups, three languages; not yet: approval queue, coupon-abuse signals.

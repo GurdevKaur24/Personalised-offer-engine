@@ -37,10 +37,12 @@ Offers asked for between 9 pm and 9 am wait until morning (quiet hours). That is
 While the bot runs, it also serves a page for the marketing team: the bot's live results, the decision log and the
 rules (which the bot uses from its next decision). Hosted at **https://peshkash.onrender.com**: sign in with the
 page password given with the submission. Locally it is at **http://localhost:8010**, with no password.
+**Open the bot** on the Dashboard opens the chat in Telegram Web, or shows a QR code to scan with a phone.
 
 ### The clickable prototype
 Double-click `prototype/index.html`. It runs entirely in the browser (no setup) on 1,500 made-up shoppers, with a
-simulated AI, so you can explore segments, change rules, run a campaign and compare strategies.
+simulated AI, so you can explore segments and customers, preview a rule change, see the message each shopper would
+get and read the Impact report.
 
 ---
 
@@ -130,11 +132,13 @@ All of them are adjustable on the marketer page, with plain-English explanations
 Cart reminders can have their own limit (one per cart), so a shopper who just got an offer can still be reminded about
 a cart they left. Marketers can switch this off.
 
-### Is it worth it? (simulation)
-The prototype runs the same campaign three ways on 1,500 shoppers, using their hidden behaviour to simulate who buys:
-**"20% off for everyone"** loses money (about −₹55,000 profit: most of the discount goes to people who would have
-bought anyway), **one offer per segment** earns about ₹47,000, and **AI within the rules** about ₹94,000. A holdout
-group that gets nothing shows how much the offers really add, and how sure we can be.
+### Is it worth it? (the Impact report)
+The **Impact report** screen runs the same campaign three ways on 1,500 shoppers, using their hidden behaviour to
+simulate who buys in the 14 days after sending: **"20% off for everyone"** loses money (about −₹55,000 profit: most of
+the discount goes to people who would have bought anyway), **one offer per segment** earns about ₹47,000, and **AI
+within the rules** about ₹94,000. A holdout group that gets nothing shows how much the offers really add, and how sure
+we can be; a breakdown shows who the discount money goes to (would buy anyway, persuadable, unlikely either way, do
+not disturb). The numbers stay the same until the rules change; **Recalculate** re-runs them with the new rules.
 
 ---
 
@@ -185,10 +189,10 @@ Command options: `python -m bot.main --cart-minutes 5` (cart reminder delay), `-
 ## Using the marketer page
 | Screen | What it shows |
 |---|---|
-| **Dashboard** | Subscribers (people who started the bot), offers sent, claim and opt-out rates, budget used; charts of offers over time (by outcome) and results by segment; who chose each offer (Claude, Claude after the checker refused its first choice, or the rules); offers by type, trigger and language; and the latest offers. Click an offer to see the exact message, Claude's reason, what it first proposed and every rule check. **Export CSV** downloads every offer as a spreadsheet (no chat ids). |
+| **Dashboard** | Subscribers (people who started the bot), offers sent, claim and opt-out rates, budget used; charts of offers over time (by outcome) and results by segment; who chose each offer (Claude, Claude after the checker refused its first choice, or the rules); offers by type, trigger and language; and the latest offers. Click an offer to see the exact message, Claude's reason, what it first proposed and every rule check. **Refresh** loads the newest offers; **Export CSV** downloads every offer as a spreadsheet (no chat ids); **Open the bot** opens the chat in Telegram Web or as a QR code. |
 | **Decision log** | Every decision, including the ones where nothing was sent and why. Filters for AI fixes and fallbacks. |
 | **Rules** | The bot's real rules, as sliders and toggles. A **preview** shows what a change would do before it is saved: who gets an offer, who is left out, budget, average discount, AI picks the checker had to fix and expected profit (a campaign simulated before and after). Then **Save** sends it to the bot; bad values are refused with an explanation. |
-| Overview, Customers, Message preview, Impact report | Planning on 1,500 simulated shoppers in the browser: segments and realism checks, each shopper's history, the message each would get, and whether the offers make money (holdout and strategy comparison). |
+| Overview, Customers, Message preview, Impact report | Planning on 1,500 simulated shoppers in the browser: segments and realism checks, each shopper's history, the message each would get (in English, Hindi or Punjabi), and whether the offers make money (holdout, strategy comparison, who the discounts go to; **Recalculate** after a rule change). |
 
 Example: on **Rules**, raise the biggest % discount to 30%. The preview shows how many more % offers would go out and
 what that does to the budget and profit; click **Save and use in the bot** to apply it, or **Discard changes**.
@@ -232,6 +236,7 @@ backend/
   web/           the marketer page server and its API
   tests/         192 tests
 prototype/index.html   the app page (live mode when served by the bot; demo mode as a file)
+prototype/login.html   the sign-in page of the hosted marketer page
 docs/                  requirements.md (the full plan), deploy.md (hosting)
 render.yaml            hosting on Render
 CLAUDE.md              project notes for Claude Code

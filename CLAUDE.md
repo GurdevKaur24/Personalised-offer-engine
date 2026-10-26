@@ -8,8 +8,10 @@ Bot: **@BazaarKartOffers_bot**. User-facing setup and usage: `README.md`; hostin
 
 ## Stack
 - **prototype/index.html**: single clickable page, opens as a file. Generates synthetic data in the browser from a fixed
-  seed, runs rules, a *simulated* AI pick and the rule checker, previews Telegram messages, shows results. Tailwind and
-  Chart.js from CDN.
+  seed, runs rules, a *simulated* AI pick and the rule checker. Screens (`VIEWS`): Overview, Customers, Rules (with
+  the rule-change preview), Message preview and Impact report (holdout, three strategies, uplift groups; Recalculate
+  after a rule change); live mode adds Dashboard and Decision log. "Open the bot" (`openBot`) shows a popup with a
+  Telegram Web link and a QR code (phones go straight to t.me). Tailwind, Chart.js and qrcode-generator from CDN.
 - **backend/**: Python 3.12, pytest, anthropic 2.3. The `peshkash/` package is plain Python (no web framework; only `agent.py` imports
   the Anthropic SDK, and only when the real AI is used):
   - `catalog.py`: calendar (TODAY = Sat 24 Oct 2026, sales, salary days), categories with margins, cities, hidden personas.
