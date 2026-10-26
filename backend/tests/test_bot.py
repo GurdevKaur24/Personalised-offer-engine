@@ -14,9 +14,9 @@ class FakeTelegram:
     def __init__(self):
         self.sent, self.removed, self.answered, self._id = [], [], [], 100
 
-    def send_message(self, chat_id, text, buttons=None):
+    def send_message(self, chat_id, text, buttons=None, menu=None):
         self._id += 1
-        self.sent.append({"chat": chat_id, "text": text, "buttons": buttons, "id": self._id})
+        self.sent.append({"chat": chat_id, "text": text, "buttons": buttons, "menu": menu, "id": self._id})
         return self._id
 
     def answer_callback(self, callback_id, text=None):
@@ -264,3 +264,121 @@ def test_with_an_ai_the_bot_sends_ai_written_offers_and_records_the_source(custo
             assert r["text"].startswith("Hi there") and r["reason"] == "Fake AI reason."
     logged = [json.loads(e["detail"]) for e in bot.store.db.execute("SELECT detail FROM events WHERE kind='decision'")]
     assert all("source" in d and "ai_attempts" in d for d in logged)
+
+
+# ---------- Menu, "My offers", tap-to-copy codes ----------
+from bot import texts                                                     # noqa: E402
+from bot.telegram import keyboard, menu_keyboard                          # noqa: E402
+
+
+def test_every_menu_button_in_every_language_maps_to_a_real_command():
+    known = {"/offer", "/myoffers", "/shop", "/profile", "/newprofile", "/language", "/help"}
+    for lang, t in texts.T.items():
+        labels = [label for row in t["menu"] for label in row]
+        assert len(labels) == len(set(labels)) == 7, lang
+        assert {texts.MENU_COMMANDS[label] for label in labels} == known, lang
+    assert {c for c, _ in texts.COMMANDS} >= {k[1:] for k in known}
+
+
+def test_menu_keyboard_stays_under_the_chat_and_inline_buttons_still_win():
+    m = menu_keyboard(texts.T["en"]["menu"])
+    assert m["is_persistent"] and m["resize_keyboard"] and m["keyboard"][0][0] == {"text": "✨ Get an offer"}
+    assert keyboard([[("Yes", "y")]]) == {"inline_keyboard": [[{"text": "Yes", "callback_data": "y"}]]}
+
+
+@pytest.mark.parametrize("lang", ["en", "hi", "pa"])
+def test_welcome_shows_the_menu_and_each_button_works(make_bot, lang):
+    bot, api, _ = make_bot()
+    join(bot, api, 1, lang)
+    menu = texts.T[lang]["menu"]
+    assert api.sent[1]["menu"] == menu                                    # the welcome carries the menu
+    by_cmd = {cmd: label for row_l, row_c in zip(menu, texts.MENU_LAYOUT) for label, cmd in zip(row_l, row_c)}
+
+    bot.handle(msg(1, by_cmd["/shop"]))
+    assert any(d.startswith("shop:") for d in offer_buttons(api.last(1)))
+    bot.handle(msg(1, by_cmd["/myoffers"]))
+    assert f"<code>{offers(bot, 1)[0]['code']}</code>" in api.last(1)["text"]
+    bot.handle(msg(1, by_cmd["/profile"]))
+    assert bot.by_id[bot.store.user(1)["customer_id"]]["name"] in api.last(1)["text"]
+    bot.handle(msg(1, by_cmd["/help"]))
+    assert "/myoffers" in api.last(1)["text"] and api.last(1)["menu"] == menu
+    n = len(offers(bot, 1))
+    bot.handle(msg(1, by_cmd["/offer"]))                                  # refused by the 3-day gap, but asked
+    kinds = [r["kind"] for r in bot.store.db.execute("SELECT kind FROM events")]
+    assert kinds.count("decision") == 2 and len(offers(bot, 1)) == n
+    first = bot.store.user(1)["customer_id"]
+    bot.handle(msg(1, by_cmd["/newprofile"]))
+    assert bot.store.user(1)["customer_id"] != first
+    bot.handle(msg(1, by_cmd["/language"]))
+    assert api.last(1)["text"] == texts.CHOOSE_LANG
+
+
+def test_changing_language_sends_the_menu_in_the_new_language(make_bot):
+    bot, api, _ = make_bot()
+    join(bot, api, 1, "en")
+    bot.handle(msg(1, "🌐 Language"))
+    bot.handle(tap(1, "lang:pa"))
+    assert api.last(1)["menu"] == texts.T["pa"]["menu"]
+
+
+def test_delivered_offer_has_a_header_and_a_tap_to_copy_code(make_bot):
+    bot, api, _ = make_bot()
+    join(bot, api, 1)
+    o, m = offers(bot, 1)[0], api.sent[2]
+    assert m["text"].startswith(texts.T["en"]["offer_header"])
+    assert f"<code>{o['code']}</code>" in m["text"] and "<code>" not in o["text"]   # stored text stays plain
+    bot.handle(tap(1, f"claim:{o['id']}"))
+    assert f"<code>{o['code']}</code>" in api.last(1)["text"]
+
+
+def test_my_offers_lists_usable_offers_with_their_status(make_bot):
+    bot, api, _ = make_bot()
+    join(bot, api, 1)
+    o = offers(bot, 1)[0]
+    bot.handle(msg(1, "/myoffers"))
+    text = api.last(1)["text"]
+    assert o["code"] in text and o["expiry"] in text and "Not used yet" in text
+    bot.handle(tap(1, f"claim:{o['id']}"))
+    bot.handle(msg(1, "/myoffers"))
+    assert "✅ Claimed" in api.last(1)["text"]
+
+
+def test_my_offers_leaves_out_expired_waiting_and_other_shoppers_offers(make_bot):
+    bot, api, clock = make_bot()
+    join(bot, api, 1)
+    clock.now += timedelta(days=10)                                       # past the 7-day validity
+    bot.handle(msg(1, "/myoffers"))
+    assert api.last(1)["text"] == texts.T["en"]["my_offers_none"]
+
+    bot, api, clock = make_bot(at=datetime(2026, 10, 24, 23, 30, tzinfo=IST))
+    join(bot, api, 2)                                                     # night: offer waits for the morning
+    bot.handle(msg(2, "/myoffers"))
+    assert api.last(2)["text"] == texts.T["en"]["my_offers_none"]
+
+    bot, api, _ = make_bot()
+    join(bot, api, 3)
+    bot.handle(msg(3, "/newprofile"))                                     # new shopper: only their own offer
+    bot.handle(msg(3, "/myoffers"))
+    assert offers(bot, 3)[0]["code"] not in api.last(3)["text"] and offers(bot, 3)[1]["code"] in api.last(3)["text"]
+
+
+def test_shop_lists_prices_and_the_cart_after_adding(make_bot):
+    bot, api, _ = make_bot()
+    join(bot, api, 1)
+    bot.handle(tap(1, "shop:sports"))
+    assert "Yoga mat — <b>₹699</b>" in api.last(1)["text"]
+    bot.handle(tap(1, "add:sports:1"))
+    bot.handle(tap(1, "add:sports:4"))
+    text = api.last(1)["text"]
+    assert "• Yoga mat — ₹699" in text and "• Gym gloves — ₹399" in text and "Total: ₹1,098" in text
+
+
+def test_older_databases_get_the_new_column(tmp_path):
+    import sqlite3
+    path = tmp_path / "old.db"
+    with sqlite3.connect(path) as db:
+        db.execute("CREATE TABLE offers (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, customer_id TEXT, type TEXT, summary TEXT,"
+                   " code TEXT, expiry TEXT, cost INTEGER, text TEXT, reason TEXT, status TEXT, trigger TEXT, created_at TEXT, send_at TEXT,"
+                   " sent_at TEXT, answered_at TEXT, message_id INTEGER, checks TEXT)")
+    cols = {r[1] for r in Store(path).db.execute("PRAGMA table_info(offers)")}
+    assert {"source", "expires_on"} <= cols

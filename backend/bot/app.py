@@ -57,7 +57,10 @@ class OfferBot:
     def _t(self, chat_id: int) -> dict:
         return texts.T[self._lang(chat_id)]
 
-    def _send(self, chat_id: int, text: str, buttons=None) -> int:
+    def _send(self, chat_id: int, text: str, buttons=None, menu: bool = False) -> int:
+        """`menu=True` also puts the main menu (in the user's language) under the chat."""
+        if menu:
+            return self.api.send_message(chat_id, text, buttons, menu=self._t(chat_id)["menu"])
         return self.api.send_message(chat_id, text, buttons)
 
     def _assign(self, chat_id: int):
@@ -105,6 +108,20 @@ class OfferBot:
         if c["cart"]:
             out += T["cart_line"].format(items=esc(", ".join(x["name"] for x in c["cart"]["items"])))
         return out
+
+    def _my_offers_text(self, chat_id: int) -> str:
+        """The user's offers they can still use (for their current shopper), with tap-to-copy codes."""
+        u, T = self.store.user(chat_id), self._t(chat_id)
+        rows = self.store.active_offers(chat_id, u["customer_id"], self.clock().date().isoformat())
+        if not rows:
+            return T["my_offers_none"]
+        parts = [T["my_offers"]]
+        for r in rows:
+            text_lines = r["text"].split("\n")
+            offer_line = text_lines[1] if len(text_lines) > 1 else r["summary"]
+            status = T["status_claimed"] if r["status"] == "claimed" else T["status_open"]
+            parts.append(f"<b>{esc(offer_line)}</b>\n<code>{esc(r['code'])}</code> · {T['valid_till'].format(d=esc(r['expiry']))}\n{status}")
+        return "\n\n".join(parts)
 
     # ---------- offers ----------
     def try_offer(self, chat_id: int, trigger: str, only: list[str] | None = None) -> int | None:
@@ -157,8 +174,9 @@ class OfferBot:
         T = self._t(row["chat_id"])
         lines = [esc(x) for x in row["text"].split("\n")]
         lines[1] = f"<b>{lines[1]}</b>"
+        lines[2] = lines[2].replace(esc(row["code"]), f"<code>{esc(row['code'])}</code>", 1)     # tap to copy
         buttons = [[(T["buttons"][0], f"claim:{oid}")], [(T["buttons"][1], f"later:{oid}"), (T["buttons"][2], f"stop:{oid}")]]
-        mid = self._send(row["chat_id"], "\n".join(lines), buttons)
+        mid = self._send(row["chat_id"], T["offer_header"] + "\n\n" + "\n".join(lines), buttons)
         self.store.mark_sent(oid, mid, now)
         self.store.log(row["chat_id"], "sent", f"{row['summary']} ({row['code']})", now)
 
@@ -188,13 +206,13 @@ class OfferBot:
 
     def _start_profile(self, chat_id: int, fresh: bool):
         T = self._t(chat_id)
-        self._send(chat_id, (T["welcome"] if fresh else T["new_profile"]) + "\n\n" + self._profile_text(chat_id))
+        self._send(chat_id, (T["welcome"] if fresh else T["new_profile"]) + "\n\n" + self._profile_text(chat_id), menu=True)
         self.try_offer(chat_id, "start")
 
     def _message(self, msg: dict):
         chat_id, now = msg["chat"]["id"], self.clock()
         text = (msg.get("text") or "").strip()
-        cmd = text.split()[0].split("@")[0].lower() if text.startswith("/") else ""
+        cmd = text.split()[0].split("@")[0].lower() if text.startswith("/") else texts.MENU_COMMANDS.get(text, "")
         u = self.store.user(chat_id)
         if u is None or cmd == "/start":
             self.store.add_user(chat_id, now)
@@ -212,7 +230,9 @@ class OfferBot:
             return
         T = self._t(chat_id)
         if cmd == "/help":
-            self._send(chat_id, T["help"])
+            self._send(chat_id, T["help"], menu=True)
+        elif cmd == "/myoffers":
+            self._send(chat_id, self._my_offers_text(chat_id))
         elif cmd == "/profile":
             self._send(chat_id, self._profile_text(chat_id))
         elif cmd == "/newprofile":
@@ -255,7 +275,7 @@ class OfferBot:
             if first_time:
                 self._start_profile(chat_id, fresh=True)
             else:
-                self._send(chat_id, self._profile_text(chat_id))
+                self._send(chat_id, self._profile_text(chat_id), menu=True)      # the menu, now in the new language
             return
         T = self._t(chat_id)
         if kind in ("claim", "later", "stop"):
@@ -275,8 +295,11 @@ class OfferBot:
             exp = row["expiry"]
             self._send(chat_id, T["claim"].format(code=esc(row["code"]), d=exp) if kind == "claim" else T["later"].format(d=exp))
         elif kind == "shop" and arg in CATS:
-            items = [[(f"{name} · ₹{price:,}", f"add:{arg}:{i}")] for i, (name, price) in enumerate(CATS[arg]["items"])]
-            self._send(chat_id, T["items"], items)
+            lang = self._lang(chat_id)
+            listing = "\n".join(f"• {esc(name)} — <b>₹{price:,}</b>" for name, price in CATS[arg]["items"])
+            items = [[(f"＋ {name} · ₹{price:,}", f"add:{arg}:{i}")] for i, (name, price) in enumerate(CATS[arg]["items"])]
+            cat_name = CATS[arg]["name"] if lang == "en" else CATS[arg][lang]
+            self._send(chat_id, T["items"].format(cat=esc(cat_name), lines=listing), items)
         elif kind == "add":
             cat, _, i = arg.partition(":")
             if cat in CATS and i.isdigit() and int(i) < len(CATS[cat]["items"]):
@@ -284,7 +307,8 @@ class OfferBot:
                 self.store.add_to_cart(chat_id, {"name": name, "price": price, "cat": cat}, now)
                 cart = self.store.cart(chat_id)
                 self.store.log(chat_id, "cart", f"Added {name}", now)
-                self._send(chat_id, T["added"].format(item=esc(name), n=len(cart["items"]), total=sum(x["price"] for x in cart["items"])),
+                lines = "\n".join(f"• {esc(x['name'])} — ₹{x['price']:,}" for x in cart["items"])
+                self._send(chat_id, T["added"].format(item=esc(name), lines=lines, total=sum(x["price"] for x in cart["items"])),
                            [[(T["checkout"], "checkout:"), (T["more"], "more:")]])
         elif kind == "more":
             self._shop_menu(chat_id)

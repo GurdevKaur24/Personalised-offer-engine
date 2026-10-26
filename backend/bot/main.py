@@ -71,6 +71,11 @@ def main() -> None:
         print(f"Could not reach Telegram: {e}. Check the token and the internet connection.")
         sys.exit(1)
     api.set_commands(texts.COMMANDS)
+    for lang, (description, short) in texts.DESCRIPTIONS.items():   # the bot's page before Start; English for everyone else
+        try:
+            api.set_descriptions(description, short, None if lang == "en" else lang)
+        except (TelegramError, OSError) as e:
+            print(f"Could not set the bot description ({lang}): {e}")
     chooser = None
     if os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("PESHKASH_AI", "1") != "0":
         chooser = ClaudeChooser()
