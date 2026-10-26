@@ -188,7 +188,7 @@ Command options: `python -m bot.main --cart-minutes 5` (cart reminder delay), `-
 | **Dashboard** | Subscribers (people who started the bot), offers sent, claim and opt-out rates, budget used; charts of offers over time (by outcome) and results by segment; who chose each offer (Claude, Claude after the checker refused its first choice, or the rules); offers by type, trigger and language; and the latest offers. Click an offer to see the exact message, Claude's reason, what it first proposed and every rule check. **Export CSV** downloads every offer as a spreadsheet (no chat ids). |
 | **Decision log** | Every decision, including the ones where nothing was sent and why. Filters for AI fixes and fallbacks. |
 | **Rules** | The bot's real rules, as sliders and toggles. A **preview** shows what a change would do before it is saved: who gets an offer, who is left out, budget, average discount, AI picks the checker had to fix and expected profit (a campaign simulated before and after). Then **Save** sends it to the bot; bad values are refused with an explanation. |
-| Overview, Customers, Campaign simulator, Message preview, Impact report | Planning on 1,500 simulated shoppers in the browser: segments, realism checks, a full campaign run and the strategy comparison. |
+| Overview, Customers, Message preview, Impact report | Planning on 1,500 simulated shoppers in the browser: segments and realism checks, each shopper's history, the message each would get, and whether the offers make money (holdout and strategy comparison). |
 
 Example: on **Rules**, raise the biggest % discount to 30%. The preview shows how many more % offers would go out and
 what that does to the budget and profit; click **Save and use in the bot** to apply it, or **Discard changes**.

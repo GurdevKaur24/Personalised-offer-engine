@@ -842,7 +842,7 @@ const BY_ID = Object.fromEntries(CUSTOMERS.map(c => [c.id, c]));
 const STATS = computeStats();
 const state = {
   screen: 'overview', lastScreen: null, rules: loadRules(), run: null, ev: null, rulesChanged: false,
-  q: '', seg: 'all', sort: 'value', page: 0, runFilter: 'all', runPage: 0,
+  q: '', seg: 'all', sort: 'value', page: 0,
   tg: { id: null, lang: null, chat: [], q: '' },
 };
 
@@ -1031,7 +1031,7 @@ function viewOverview() {
       <td class="py-2.5 pr-3"><div class="flex items-center gap-2"><div class="h-1.5 w-20 rounded-full bg-slate-100"><div class="h-1.5 rounded-full" style="background:var(--series-1);width:${Math.max(2, x.m365 / S.m365All * 100)}%"></div></div><span class="tabular-nums text-xs">${pct(x.m365 / S.m365All)}</span></div></td>
       <td class="py-2.5 pr-3 tabular-nums text-right whitespace-nowrap">${x.rec.length ? `${Math.round(median(x.rec))} days` : '–'}</td>
       <td class="py-2.5 text-slate-600 min-w-[13rem]">${SEGMENTS[s].play}</td></tr>`; }).join('');
-  return `${pageHead('Overview', 'How BazaarKart customers shop, and where an offer can actually change what they do.', btn('See the customers', "go('customers')", 'ghost') + btn(icon('send', 'w-4 h-4') + 'Open simulator', "go('run')"))}
+  return `${pageHead('Overview', 'How BazaarKart customers shop, and where an offer can actually change what they do.', btn('See the customers', "go('customers')", 'ghost'))}
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
     ${kpi('Customers', num(CUSTOMERS.length), `${num(S.active90)} bought in the last 90 days`)}
     ${kpi('Revenue, last 90 days', inr(S.rev90), `${num(S.orders90)} orders · average ${inr(S.rev90 / S.orders90)}`)}
@@ -1123,7 +1123,7 @@ function openCustomer(id) {
       ${stat('Points', num(c.points))}${stat('Visits (30 days)', c.sessions30)}${stat('Usually online', hourLabel(c.activeHour))}${stat('Member for', `${c.signupAgo} days`)}
     </div>
     ${catTot ? `<h3 class="font-semibold mt-5 mb-2">Where they spend</h3><div class="space-y-1.5">${c.topCats.slice(0, 4).map(k => `<div class="flex items-center gap-2 text-sm"><span class="w-32 shrink-0">${CATS[k].name}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:var(--series-1);width:${c.catSpend[k] / catTot * 100}%"></div></div><span class="w-12 text-right tabular-nums text-xs">${pct(c.catSpend[k] / catTot)}</span></div>`).join('')}</div>` : ''}
-    ${dec ? `<h3 class="font-semibold mt-5 mb-2">In the last campaign run</h3><div class="rounded-xl border border-slate-200 p-3 text-sm flex flex-wrap items-center gap-2">${outChip(dec.outcome)}${dec.final ? offerChip(dec.final) : ''}<span class="text-slate-500">${esc(decisionWhy(dec))}</span><button type="button" class="ml-auto text-brand-700 font-medium hover:underline" onclick="openDecision('${c.id}')">See the decision →</button></div>` : ''}
+    ${dec ? `<h3 class="font-semibold mt-5 mb-2">In a simulated campaign</h3><div class="rounded-xl border border-slate-200 p-3 text-sm flex flex-wrap items-center gap-2">${outChip(dec.outcome)}${dec.final ? offerChip(dec.final) : ''}<span class="text-slate-500">${esc(decisionWhy(dec))}</span><button type="button" class="ml-auto text-brand-700 font-medium hover:underline" onclick="openDecision('${c.id}')">See the decision →</button></div>` : ''}
     <h3 class="font-semibold mt-5 mb-2">Timeline</h3>
     <ol class="relative border-l border-slate-200 ml-2">${ev.slice(0, 16).map(e => `<li class="ml-4 pb-3"><span class="absolute -left-2.5 grid place-items-center w-5 h-5 rounded-full bg-white border border-slate-200 text-[11px]">${icon(e.icon, 'w-3 h-3 text-slate-500')}</span><div class="text-xs text-slate-500">${e.d < 0 ? 'Coming up' : ago(e.d)}</div><div class="text-sm">${esc(e.text)}</div></li>`).join('')}</ol>`);
 }
@@ -1137,7 +1137,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(
 /* ---------- Rules ---------- */
 function ruleImpact(key) {
   const R = state.rules, C = CUSTOMERS, run = state.run;
-  const lastRun = id => { if (!run) return ''; const n = run.decisions.filter(d => d.firstChecks.some(x => x.id === id && !x.ok)).length; return ` ${LIVE.on ? 'Last simulated run' : 'Last run'}: ${n ? `${plural(n, 'AI pick')} broke this and ${n === 1 ? 'was' : 'were'} fixed before sending.` : 'no AI pick broke this.'}`; };
+  const lastRun = id => { if (!run) return ''; const n = run.decisions.filter(d => d.firstChecks.some(x => x.id === id && !x.ok)).length; return ` In a simulated campaign: ${n ? `${plural(n, 'AI pick')} broke this and ${n === 1 ? 'was' : 'were'} fixed before sending.` : 'no AI pick broke this.'}`; };
   const count = f => (LIVE.on ? 'In the simulation, ' : '') + num(C.filter(f).length);
   switch (key) {
     case 'maxPct': return 'The AI can never offer more than this on % discounts.' + lastRun('discount');
@@ -1145,7 +1145,7 @@ function ruleImpact(key) {
     case 'cartMaxPct': return 'Cart reminders work without a discount; this caps the optional small discount.';
     case 'welcomeFlat': return 'Rupees off the second order for new customers.';
     case 'marginFloor': return 'So the most % off each category can take is: ' + CAT_KEYS.map(k => `${CATS[k].name} ${maxPctByMargin(CATS[k].margin, R)}%`).join(' · ') + '.' + lastRun('margin');
-    case 'budget': { if (!run) return 'Every offer counts at full cost, as if every customer uses it, so you never overspend.'; const missed = run.decisions.filter(d => d.outcome === 'budget').length; return `Last run committed ${inr(run.spent)} across ${num(run.decisions.filter(d => d.final).length)} offers${missed ? `; ${num(missed)} customers missed out when it ran out` : ''}. Every offer counts at full cost, as if all are used.`; }
+    case 'budget': { if (!run) return 'Every offer counts at full cost, as if every customer uses it, so you never overspend.'; const missed = run.decisions.filter(d => d.outcome === 'budget').length; return `A simulated campaign commits ${inr(run.spent)} across ${num(run.decisions.filter(d => d.final).length)} offers${missed ? `; ${num(missed)} customers missed out when it ran out` : ''}. Every offer counts at full cost, as if all are used.`; }
     case 'maxPerWeek': return `${count(c => c.offersThisWeek >= R.maxPerWeek)} customers already got ${plural(R.maxPerWeek, 'offer')} this week and will be skipped.`;
     case 'minGapDays': return `${count(c => c.lastOfferAgo < R.minGapDays)} customers got an offer in the last ${plural(R.minGapDays, 'day')} and will be skipped.`;
     case 'skipRecentDays': return `${count(c => c.recency != null && c.recency < R.skipRecentDays)} customers bought in the last ${plural(R.skipRecentDays, 'day')}; they don't need a nudge.`;
@@ -1299,7 +1299,7 @@ function viewRules() {
   const hourSel = key => `<select onchange="state.rules.${key}=+this.value;rulesTouched()" class="rounded-lg border border-slate-300 px-2 py-1 text-sm">${hours.map(h => `<option value="${h}" ${R[key] === h ? 'selected' : ''}>${hourLabel(h)}</option>`).join('')}</select>`;
   const grid = `<div class="overflow-x-auto scroll-thin"><table class="text-sm min-w-[760px] w-full"><thead><tr><th class="text-left py-2 pr-3 font-medium text-xs text-slate-500">Segment</th>${OFFER_KEYS.map(t => `<th class="py-2 px-1 font-medium text-xs text-slate-600 text-center w-20"><div class="text-base">${oIcon(t)}</div>${OFFERS[t].short}</th>`).join('')}</tr></thead>
     <tbody>${SEG_KEYS.map(sg => `<tr class="border-t border-slate-100"><td class="py-2 pr-3">${segChip(sg)}</td>${OFFER_KEYS.map(t => `<td class="text-center"><input type="checkbox" aria-label="${OFFERS[t].label} for ${SEGMENTS[sg].label}" class="w-4 h-4 accent-brand-600" ${R.grid[sg].includes(t) ? 'checked' : ''} onchange="toggleGrid('${sg}','${t}',this.checked)"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-  return `${pageHead('Offer rules', 'These limits apply to every offer. The AI only chooses inside them, and every AI choice is checked against them again before it is sent.', btn('Reset to defaults', 'resetRules()', 'ghost') + btn('Simulate these rules', "runNow();go('run')"))}
+  return `${pageHead('Offer rules', 'These limits apply to every offer. The AI only chooses inside them, and every AI choice is checked against them again before it is sent.', btn('Reset to defaults', 'resetRules()', 'ghost'))}
   ${LIVE.on ? `<div class="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm"><b>Live:</b> these are the rules the Telegram bot uses. Change them, check the preview, then save; the bot uses saved rules from its next decision.</div>` : ''}
   <div class="grid lg:grid-cols-[minmax(0,1fr)_23rem] gap-4 items-start">
   <aside id="rulePreview" class="order-first lg:order-last lg:sticky lg:top-4 bg-white rounded-2xl border-2 border-brand-200 p-4 md:p-5 transition-opacity min-w-0">${previewIdleHtml()}</aside>
@@ -1325,55 +1325,12 @@ function viewRules() {
 }
 
 /* ---------- Run offers ---------- */
-function runNow() { state.run = runCampaign(state.rules); state.ev = evaluate(state.run); state.rulesChanged = false; state.runPage = 0; }
+function runNow() { state.run = runCampaign(state.rules); state.ev = evaluate(state.run); state.rulesChanged = false; }
 function decisionWhy(d) {
   if (d.outcome === 'holdout') return 'Kept out on purpose to measure results.';
   if (d.outcome === 'blocked' || d.outcome === 'budget') return d.why === 'none' ? 'No offer type is allowed for this customer right now.' : (d.pre.find(x => x.id === d.why && !x.ok) || d.retryChecks?.find(x => x.id === d.why) || {}).detail || CHECKS[d.why].short;
   return d.final.reason;
 }
-function viewRun() {
-  const run = state.run, D = run.decisions;
-  const cnt = k => D.filter(d => d.outcome === k).length;
-  const blockedBy = {}, changedBy = {}, mix = {};
-  for (const d of D) {
-    if (d.outcome === 'blocked' || d.outcome === 'budget') { const k = d.why === 'none' ? 'No offer allowed for the segment' : CHECKS[d.why].short; blockedBy[k] = (blockedBy[k] || 0) + 1; }
-    if (d.outcome === 'fixed' || d.outcome === 'fallback') for (const x of failed(d.firstChecks)) changedBy[CHECKS[x.id].short] = (changedBy[CHECKS[x.id].short] || 0) + 1;
-    if (d.final) mix[d.final.type] = (mix[d.final.type] || 0) + 1;
-  }
-  const bars = (obj, color) => { const e = Object.entries(obj).sort((a, b) => b[1] - a[1]); const mx = Math.max(1, ...e.map(x => x[1])); return e.length ? e.map(([k, n]) => `<div class="flex items-center gap-2 text-sm py-1"><span class="w-56 shrink-0 truncate" title="${esc(k)}">${esc(k)}</span><div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full" style="background:${color};width:${n / mx * 100}%"></div></div><span class="w-10 text-right tabular-nums">${num(n)}</span></div>`).join('') : '<p class="text-sm text-slate-500">None.</p>'; };
-  const list = D.filter(d => state.runFilter === 'all' || d.outcome === state.runFilter || (state.runFilter === 'notsent' && (d.outcome === 'blocked' || d.outcome === 'budget')));
-  const size = 25, page = Math.min(state.runPage, Math.max(0, Math.ceil(list.length / size) - 1));
-  const rows = list.slice(page * size, page * size + size).map(d => `<tr class="border-t border-slate-100 hover:bg-brand-50/50 cursor-pointer" onclick="openDecision('${d.c.id}')">
-    <td class="py-2.5 pr-3"><div class="font-medium">${esc(d.c.name)}</div><div class="text-xs text-slate-500">${esc(d.c.city)} · ${LANGS[d.c.lang]}</div></td>
-    <td class="py-2.5 pr-3">${segChip(d.c.seg)}</td><td class="py-2.5 pr-3">${outChip(d.outcome)}</td>
-    <td class="py-2.5 pr-3">${d.final ? offerChip(d.final) : '<span class="text-slate-400">–</span>'}</td>
-    <td class="py-2.5 pr-3 text-right tabular-nums">${d.final ? inr(d.final.cost) : '–'}</td>
-    <td class="py-2.5 pr-3 whitespace-nowrap">${d.final ? sendLabel(d.final) : '–'}</td>
-    <td class="py-2.5 text-slate-600 text-xs min-w-[18rem]">${esc(decisionWhy(d))}</td></tr>`).join('');
-  const tile = (k, label, n, sub) => `<button type="button" onclick="state.runFilter='${k}';state.runPage=0;render()" class="text-left bg-white rounded-2xl border p-4 hover:border-brand-400 ${state.runFilter === k ? 'border-brand-500 ring-2 ring-brand-200' : 'border-slate-200'}"><div class="text-sm text-slate-500">${label}</div><div class="text-2xl font-bold mt-1 tabular-nums">${num(n)}</div><div class="text-xs text-slate-500 mt-1">${sub}</div></button>`;
-  const steps = [['1', 'Customer rules', 'Opted out, bought recently, too many offers, high returns: skipped.'], ['2', 'Holdout', `${run.rules.holdoutPct}% kept out to measure results.`], ['3', 'AI picks', 'From the allowed offers only, with value, time and message.'], ['4', 'Rule check', 'Every pick is checked again. Problems go back to the AI once.'], ['5', 'Send', 'Passed: sent. Still failing: safe default or nothing.']];
-  return `${pageHead('Campaign simulator', 'One campaign run: for every customer, which offer, why, and whether the rules let it through.', `<span class="text-xs text-slate-500">${state.rulesChanged ? '<span class="text-amber-700 font-medium">Rules changed since this run.</span>' : 'Using the current rules.'}</span>` + btn('Run campaign again', "runNow();render()"))}
-  <div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 mb-4"><b>Campaign simulator.</b> A stand-in for Claude makes the kinds of mistakes a real model makes (late-night send times, discounts on low-margin categories, the wrong language, a missing expiry date, an over-eager phrase) so you can see the rule checker catch every one. </div>
-  <ol class="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-4">${steps.map(([n, t, d]) => `<li class="bg-white rounded-xl border border-slate-200 p-3"><div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-brand-600 text-white text-xs grid place-items-center font-semibold">${n}</span><span class="font-semibold text-sm">${t}</span></div><p class="text-xs text-slate-500 mt-1.5">${d}</p></li>`).join('')}</ol>
-  <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
-    ${tile('all', 'All customers', D.length, `${inr(run.spent)} of ${inr(run.rules.budget)} budget committed`)}
-    ${tile('sent', 'Sent as the AI chose', cnt('sent'), 'passed every rule first time')}
-    ${tile('fixed', 'Fixed, then sent', cnt('fixed'), 'broke a rule, fixed, re-checked')}
-    ${tile('fallback', 'Safe default sent', cnt('fallback'), 'AI could not fix it')}
-    ${tile('holdout', 'Holdout', cnt('holdout'), 'nothing sent, to measure')}
-    ${tile('notsent', 'Not sent', cnt('blocked') + cnt('budget'), cnt('budget') ? `${num(cnt('budget'))} because the budget ran out` : 'a rule said no')}
-  </div>
-  <div class="grid lg:grid-cols-3 gap-4 mt-4">
-    ${card(`${h2('Changed before sending', 'What the rule checker caught in the AI\'s first pick')}<div class="mt-3">${bars(changedBy, 'var(--series-2)')}</div>`)}
-    ${card(`${h2('Not sent', 'Customers the rules kept out of this campaign')}<div class="mt-3">${bars(blockedBy, '#94a3b8')}</div>`)}
-    ${card(`${h2('Offers sent', 'Mix of offer types that went out')}<div class="mt-3">${bars(Object.fromEntries(Object.entries(mix).map(([k, n]) => [`${oIcon(k)} ${OFFERS[k].label}`, n])), 'var(--series-1)')}</div>`)}
-  </div>
-  ${card(`<div class="flex flex-wrap items-center justify-between gap-2">${h2('Every decision', 'Most valuable customers are decided first, so the budget goes to them. Click a row for the full check.')}
-      <span class="text-sm text-slate-500">Showing: <b>${state.runFilter === 'all' ? 'all' : state.runFilter === 'notsent' ? 'not sent' : OUTCOMES[state.runFilter].label.toLowerCase()}</b></span></div>
-    <div class="overflow-x-auto scroll-thin mt-3"><table class="w-full text-sm min-w-[980px]"><thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-3 font-medium">Customer</th><th class="py-2 pr-3 font-medium">Segment</th><th class="py-2 pr-3 font-medium">Result</th><th class="py-2 pr-3 font-medium">Offer</th><th class="py-2 pr-3 font-medium text-right">Cost if used</th><th class="py-2 pr-3 font-medium">Send time</th><th class="py-2 font-medium">Why</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="7" class="py-8 text-center text-slate-500">Nothing here.</td></tr>'}</tbody></table></div>${pager(list.length, page, size, 'runPageTo')}`, 'mt-4')}`;
-}
-function runPageTo(p) { state.runPage = p; render(); }
 function openDecision(id) {
   const d = state.run.decisions.find(x => x.c.id === id), c = d.c;
   const step = (n, title, body) => `<div class="mt-5"><div class="flex items-center gap-2 mb-2"><span class="w-6 h-6 rounded-full bg-brand-600 text-white text-xs grid place-items-center font-semibold">${n}</span><h3 class="font-semibold">${title}</h3></div><div class="ml-8">${body}</div></div>`;
@@ -1462,7 +1419,7 @@ function viewResults() {
   };
   const gMax = Math.max(1, ...ev.groupRows.flatMap(g => [g.ai, g.blanket]));
   const pts = v => `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)} pts`;
-  return `${pageHead('Impact report', 'Did the offers make money? Simulated for the 14 days after sending, using each synthetic customer\'s hidden buying behaviour. Profit also counts future orders from customers won back from leaving.', state.rulesChanged ? `<span class="text-xs text-amber-700 font-medium">Rules changed since this run.</span>${btn('Run again', 'runNow();render()')}` : '')}
+  return `${pageHead('Impact report', 'Did the offers make money? Simulated for the 14 days after sending, using each synthetic customer\'s hidden buying behaviour. Profit also counts future orders from customers won back from leaving.', state.rulesChanged ? `<span class="text-xs text-amber-700 font-medium">Rules changed since this run.</span>${btn('Recalculate', 'runNow();render()')}` : '')}
   <div class="rounded-2xl bg-gradient-to-r from-brand-800 via-brand-700 to-orange-600 text-white p-5 md:p-6">
     <div class="text-sm text-brand-100">Extra profit from this campaign (expected, after discounts)</div>
     <div class="text-4xl font-bold mt-1 tabular-nums">${inr(inc)}</div>
@@ -1692,7 +1649,6 @@ const VIEWS = {
   overview:  { label: 'Overview',           icon: 'dashboard', html: viewOverview, after: afterOverview },
   customers: { label: 'Customers',          icon: 'users',     html: viewCustomers },
   rules:     { label: 'Rules',              icon: 'sliders',   html: viewRules, after: renderPreview },
-  run:       { label: 'Campaign simulator', icon: 'send',      html: viewRun },
   telegram:  { label: 'Message preview',    icon: 'message',   html: viewTelegram },
   results:   { label: 'Impact report',      icon: 'trending',  html: viewResults, after: afterResults },
 };
@@ -1704,8 +1660,8 @@ function render() {
   const entries = Object.entries(VIEWS);
   const pick = keys => keys.map(k => [k, VIEWS[k]]).map(navBtn).join('');
   document.getElementById('nav').innerHTML = LIVE.on
-    ? group('Live') + pick(['live', 'log', 'rules']) + group('Planning · simulation') + pick(['overview', 'customers', 'run', 'telegram', 'results'])
-    : group('Planning') + pick(['overview', 'customers', 'rules', 'run', 'telegram', 'results']);
+    ? group('Live') + pick(['live', 'log', 'rules']) + group('Planning · simulation') + pick(['overview', 'customers', 'telegram', 'results'])
+    : group('Planning') + pick(['overview', 'customers', 'rules', 'telegram', 'results']);
   document.getElementById('footNote').innerHTML = LIVE.on
     ? `<div class="flex items-center gap-2.5"><span class="relative flex w-2 h-2"><span class="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-60 animate-ping"></span><span class="relative inline-flex w-2 h-2 rounded-full bg-emerald-500"></span></span><div class="min-w-0"><div class="text-[13px] font-medium text-slate-800 truncate">${LIVE.info.bot ? '@' + esc(LIVE.info.bot) : 'Bot'} online</div><div class="text-xs text-slate-500 truncate">${LIVE.info.ai_model ? 'AI: ' + esc(LIVE.info.ai_model) : 'Rule-based offers'}</div></div></div>
        ${LIVE.info.signed_in_with_password ? `<a href="/logout" class="mt-3 inline-flex items-center gap-2 text-[13px] text-slate-500 hover:text-slate-900">${icon('logout', 'w-4 h-4')}Sign out</a>` : ''}`
